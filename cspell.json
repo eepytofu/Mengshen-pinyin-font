@@ -386,7 +386,10 @@
     "numpad",
     "Sawarabi",
     "Mincho",
-    "rsvg"
+    "rsvg",
+    "claudedocs",
+    "harfbuzz",
+    "decompilation"
   ],
   "ignorePaths": [
     ".git/**",
