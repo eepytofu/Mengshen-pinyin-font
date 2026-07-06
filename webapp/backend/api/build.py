@@ -70,7 +70,16 @@ def start_build(project_id: str) -> TaskState:
         raise HTTPException(status_code=409, detail="Build already running")
 
     def job(current: Project, on_progress) -> None:
-        output_path = pipeline.run_build(current, on_progress)
+        pinyin_manager = None
+        if current.glyph_overrides.readings or current.glyph_overrides.excluded_characters:
+            from src.refactored.data import PinyinDataManager
+
+            from ..services.overlay_pinyin_source import OverlayPinyinDataSource
+
+            pinyin_manager = PinyinDataManager(
+                data_source=OverlayPinyinDataSource(current)
+            )
+        output_path = pipeline.run_build(current, on_progress, pinyin_manager)
         fresh = store.get(current.id)
         if fresh is not None:
             fresh.artifacts["output_ttf"] = str(

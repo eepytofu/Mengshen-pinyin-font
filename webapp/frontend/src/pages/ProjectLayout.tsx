@@ -5,6 +5,7 @@ import {
   FileText,
   Grid3X3,
   Package,
+  Pencil,
   ScrollText,
   SlidersHorizontal,
 } from 'lucide-react'
@@ -19,6 +20,7 @@ const STEPS = [
   { path: 'adjust', label: '位置調整', icon: SlidersHorizontal },
   { path: 'glyphs', label: 'グリフ', icon: Grid3X3 },
   { path: 'duoyinzi', label: '多音字 / GSUB', icon: BookOpenText },
+  { path: 'readings', label: '読みの編集', icon: Pencil },
   { path: 'build', label: 'ビルド', icon: Package },
 ]
 

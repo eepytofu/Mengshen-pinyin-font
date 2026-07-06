@@ -95,7 +95,7 @@ def template_paths_for(project: Project) -> dict[str, Path]:
 
 
 def output_path_for(project: Project) -> Path:
-    filename = f"{project.output.family_name}.ttf"
+    filename = f"{sanitize_family_name(project.output.family_name)}.ttf"
     return settings.OUTPUTS_DIR / project.id / filename
 
 

@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Search, X } from 'lucide-react'
+import { Pencil, Search, X } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { Badge, Button, Input, Spinner } from '../components/ui'
+
 import type { GlyphEntry } from '../types'
 import { useProject } from './ProjectLayout'
 
@@ -198,6 +200,7 @@ function GlyphDetailPanel({
   glyph: GlyphEntry
   onClose: () => void
 }) {
+  const navigate = useNavigate()
   const detail = useQuery({
     queryKey: ['glyph', projectId, glyph.name],
     queryFn: () => api.glyphDetail(projectId, glyph.name),
@@ -248,6 +251,20 @@ function GlyphDetailPanel({
           </div>
         )}
       </dl>
+
+      {glyph.char && (
+        <Button
+          variant="ghost"
+          className="mt-5 w-full"
+          onClick={() =>
+            navigate(`/projects/${projectId}/readings?char=${encodeURIComponent(glyph.char!)}`)
+          }
+        >
+          <span className="flex items-center justify-center gap-2">
+            <Pencil className="h-4 w-4" /> 読みを追加・編集
+          </span>
+        </Button>
+      )}
     </aside>
   )
 }

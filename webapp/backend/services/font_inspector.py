@@ -58,6 +58,75 @@ def read_license_entries(path: Path) -> List[LicenseEntry]:
         font.close()
 
 
+def validate_font_file(path: Path) -> None:
+    """Raise ValueError when the file is not a usable TTF/OTF."""
+    try:
+        font = TTFont(str(path), lazy=True)
+    except Exception as e:  # noqa: BLE001 - fonttools raises many types
+        raise ValueError(f"Not a valid font file: {e}") from e
+    try:
+        glyph_count = len(font.getGlyphOrder())
+        if glyph_count >= 60000:
+            raise ValueError(
+                f"Font has {glyph_count} glyphs — too close to the 65,536 "
+                "limit to add pinyin glyphs"
+            )
+        if "cmap" not in font or font.getBestCmap() is None:
+            raise ValueError("Font has no usable Unicode cmap")
+    finally:
+        font.close()
+
+
+def pinyin_coverage(path: Path, alphabet: list[str]) -> list[str]:
+    """Return alphabet characters missing from the font's cmap."""
+    font = TTFont(str(path), lazy=True)
+    try:
+        cmap = font.getBestCmap()
+        return [c for c in alphabet if ord(c) not in cmap]
+    finally:
+        font.close()
+
+
+def normalize_pinyin_font(path: Path, alphabet: list[str]) -> Path:
+    """Decompose composite alphabet glyphs into contours (TrueType only).
+
+    retrieve_latin_alphabet copies glyphs verbatim; composite references
+    would dangle in the generated alphabet JSON, breaking py_alphabet_*
+    glyphs in the built font.
+    """
+    font = TTFont(str(path))
+    try:
+        if "glyf" not in font:
+            return path  # CFF outlines have no composites to resolve
+
+        from fontTools.pens.recordingPen import DecomposingRecordingPen
+        from fontTools.pens.ttGlyphPen import TTGlyphPen
+
+        glyf = font["glyf"]
+        glyph_set = font.getGlyphSet()
+        cmap = font.getBestCmap()
+        changed = False
+        for char in alphabet:
+            glyph_name = cmap.get(ord(char))
+            if glyph_name is None or not glyf[glyph_name].isComposite():
+                continue
+            recorder = DecomposingRecordingPen(glyph_set)
+            glyph_set[glyph_name].draw(recorder)
+            pen = TTGlyphPen(None)
+            recorder.replay(pen)
+            glyf[glyph_name] = pen.glyph()
+            changed = True
+
+        if not changed:
+            return path
+
+        normalized_path = path.with_name(f"{path.stem}_normalized{path.suffix}")
+        font.save(str(normalized_path))
+        return normalized_path
+    finally:
+        font.close()
+
+
 def inspect_font(path: Path, source: str, original_filename: str) -> FontRef:
     font = TTFont(str(path), lazy=True)
     try:

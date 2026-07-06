@@ -6,7 +6,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile
+
+from src.refactored.scripts.retrieve_latin_alphabet import ALPHABET
 
 from ..schemas import (
     BuiltinSelectRequest,
@@ -82,6 +84,42 @@ def _set_font(project: Project, role: FontRole, path: Path, source: str) -> Proj
         update={"status": "idle", "stage": None, "progress": 0.0, "error": None}
     )
     return project
+
+
+@router.post("/{project_id}/fonts/{role}")
+async def upload_font(project_id: str, role: FontRole, file: UploadFile) -> Project:
+    project = get_project_or_404(project_id)
+
+    filename = file.filename or "font.ttf"
+    suffix = Path(filename).suffix.lower()
+    if suffix not in (".ttf", ".otf"):
+        raise HTTPException(status_code=422, detail="Only .ttf / .otf are supported")
+
+    fonts_dir = store.fonts_dir(project_id)
+    fonts_dir.mkdir(parents=True, exist_ok=True)
+    target = fonts_dir / f"{role}{suffix}"
+    target.write_bytes(await file.read())
+
+    try:
+        font_inspector.validate_font_file(target)
+        if role == "pinyin":
+            missing = font_inspector.pinyin_coverage(target, ALPHABET)
+            if missing:
+                raise ValueError(
+                    "Pinyin font is missing required glyphs: "
+                    + " ".join(missing[:20])
+                    + (" …" if len(missing) > 20 else "")
+                )
+            target = font_inspector.normalize_pinyin_font(target, ALPHABET)
+    except ValueError as e:
+        target.unlink(missing_ok=True)
+        raise HTTPException(status_code=422, detail=str(e))
+
+    project = _set_font(project, role, target, "upload")
+    font_ref = project.base_font if role == "base" else project.pinyin_font
+    if font_ref is not None:
+        font_ref.original_filename = filename
+    return store.save(project)
 
 
 @router.put("/{project_id}/fonts/{role}/builtin")

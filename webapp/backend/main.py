@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import settings
-from .api import build, duoyinzi, glyphs, meta, preview, projects
+from .api import build, duoyinzi, glyphs, meta, preview, projects, readings
 from .api.deps import tasks
 
 
@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(preview.router)
     app.include_router(glyphs.router)
     app.include_router(duoyinzi.router)
+    app.include_router(readings.router)
     app.include_router(build.router)
 
     if settings.FRONTEND_DIST.exists():

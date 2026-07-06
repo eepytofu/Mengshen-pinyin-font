@@ -1,0 +1,67 @@
+# -*- coding: utf-8 -*-
+"""Reading (pinyin) override endpoints."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, HTTPException
+
+from src.refactored.utils.pinyin_utils import simplification_pronunciation
+
+from ..schemas import Project, ReadingOverride
+from ..services.preview_composer import get_pronunciations
+from .deps import get_project_or_404, store
+
+router = APIRouter(prefix="/api/projects/{project_id}", tags=["readings"])
+
+
+def _validate_pronunciations(pronunciations: list[str]) -> None:
+    if not pronunciations:
+        raise HTTPException(status_code=422, detail="At least one reading required")
+    for pronunciation in pronunciations:
+        simplified = simplification_pronunciation(pronunciation)
+        if not simplified.replace("5", "").isascii():
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Invalid pinyin syllable: {pronunciation} — "
+                    "use tone-marked letters like zhōng"
+                ),
+            )
+
+
+def _effective(project: Project, char: str) -> dict:
+    return {
+        "char": char,
+        "readings": get_pronunciations(project, char),
+        "override": project.glyph_overrides.readings.get(char),
+    }
+
+
+@router.get("/readings/{char}")
+def get_reading(project_id: str, char: str) -> dict:
+    project = get_project_or_404(project_id)
+    if len(char) != 1:
+        raise HTTPException(status_code=422, detail="Specify exactly one character")
+    return _effective(project, char)
+
+
+@router.put("/readings/{char}")
+def set_reading(project_id: str, char: str, body: ReadingOverride) -> dict:
+    project = get_project_or_404(project_id)
+    if len(char) != 1:
+        raise HTTPException(status_code=422, detail="Specify exactly one character")
+    _validate_pronunciations(body.pronunciations)
+
+    project.glyph_overrides.readings[char] = body
+    store.save(project)
+    return _effective(project, char)
+
+
+@router.delete("/readings/{char}")
+def delete_reading(project_id: str, char: str) -> dict:
+    project = get_project_or_404(project_id)
+    if char not in project.glyph_overrides.readings:
+        raise HTTPException(status_code=404, detail=f"No override for: {char}")
+    del project.glyph_overrides.readings[char]
+    store.save(project)
+    return _effective(project, char)
