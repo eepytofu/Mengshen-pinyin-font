@@ -94,5 +94,7 @@ export interface BuiltinFont {
   label: string
   base_path: string
   pinyin_path: string
+  base_family: string | null
+  pinyin_family: string | null
   default_canvas: Canvas
 }

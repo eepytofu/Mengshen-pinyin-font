@@ -141,8 +141,11 @@ function BuiltinCard({
   selected: boolean
   onSelect: () => void
 }) {
-  // Render the preset label in the preset's own font
+  // Show the family name of the font actually used for this role,
+  // rendered in that font (base and pinyin differ within a preset)
   const family = useFontFace(`/api/builtin-fonts/${builtin.style}/${role}/file`)
+  const name =
+    (role === 'base' ? builtin.base_family : builtin.pinyin_family) ?? builtin.label
   return (
     <button
       onClick={onSelect}
@@ -155,11 +158,11 @@ function BuiltinCard({
           className="text-sm font-medium text-slate-200"
           style={family ? { fontFamily: family, fontSize: '1rem' } : undefined}
         >
-          {builtin.label}
+          {name}
         </span>
         {selected && <Check className="h-4 w-4 shrink-0 text-accent-hover" />}
       </div>
-      <span className="text-xs text-slate-500">同梱プリセット</span>
+      <span className="text-xs text-slate-500">同梱プリセット ・ {builtin.label}</span>
     </button>
   )
 }
