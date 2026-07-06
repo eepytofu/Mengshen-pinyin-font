@@ -106,6 +106,13 @@ export default function GlyphsStep() {
           </div>
         </div>
 
+        {category === 'pronunciation' && glyphs.data?.total === 0 && (
+          <div className="mx-6 mt-4 rounded-lg border border-line bg-surface px-4 py-3 text-sm text-slate-400">
+            発音グリフ（拼音を合成した .ssNN グリフ）はビルド時に生成されます。
+            フォントをビルドすると、ここに一覧表示されます。
+          </div>
+        )}
+
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4">
           <div
             style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
@@ -185,7 +192,9 @@ function GlyphCell({
         className="h-14 w-14 object-contain"
       />
       <span className="mt-1 w-full truncate text-center text-[10px] text-slate-500">
-        {glyph.char ?? glyph.name}
+        {glyph.category === 'pronunciation'
+          ? `${glyph.char} ${glyph.reading ?? '拼音なし'}`
+          : (glyph.char ?? glyph.name)}
       </span>
     </button>
   )
@@ -230,6 +239,12 @@ function GlyphDetailPanel({
           <DetailRow label="Unicode" value={glyph.codepoints.join(', ')} mono />
         )}
         <DetailRow label="advance width" value={String(glyph.advance_width)} mono />
+        {glyph.category === 'pronunciation' && (
+          <DetailRow
+            label="読みバリアント"
+            value={`${glyph.variant} — ${glyph.reading ?? '拼音なし'}`}
+          />
+        )}
         <div>
           <dt className="text-xs uppercase tracking-wide text-slate-500">カテゴリ</dt>
           <dd className="mt-1">

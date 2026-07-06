@@ -39,3 +39,22 @@ class TestTablesFor:
         # 龜 is traditional — Big5 (also joyo? 亀 is joyo, 龜 is not)
         assert "big5" in tables_for([ord("龜")])
         assert tables_for([0x00A7]) == []
+
+
+class TestPronunciationEntries:
+    def test_empty_before_build(self, store):
+        from webapp.backend.services.glyph_catalog import _pronunciation_entries
+
+        project = store.create("Test")
+        assert project.tasks["build"].status == "idle"
+        assert _pronunciation_entries(project) == []
+
+    def test_empty_when_output_missing(self, store):
+        from webapp.backend.services.glyph_catalog import _pronunciation_entries
+
+        project = store.create("Test")
+        project.tasks["build"] = project.tasks["build"].model_copy(
+            update={"status": "done"}
+        )
+        # No output TTF on disk -> nothing to list
+        assert _pronunciation_entries(project) == []

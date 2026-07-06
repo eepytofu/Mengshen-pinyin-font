@@ -81,12 +81,15 @@ export interface PreviewResponse {
 
 export interface GlyphEntry {
   name: string
-  font: 'base' | 'pinyin'
+  font: 'base' | 'pinyin' | 'output'
   char: string | null
   codepoints: string[]
   advance_width: number
   category: string
   overridden: boolean
+  // Only on category 'pronunciation' (built-font .ssNN variants)
+  variant?: string
+  reading?: string | null
 }
 
 export interface GlyphPage {

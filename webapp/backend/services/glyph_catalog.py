@@ -20,7 +20,7 @@ from .project_store import ProjectStore
 
 INDEX_FILENAME = "glyph_index.json"
 # Bump when index build logic changes so cached glyph_index.json regenerates
-_INDEX_VERSION = "v2"
+_INDEX_VERSION = "v3"
 
 _index_lock = threading.Lock()
 _index_cache: Dict[str, tuple[str, List[dict]]] = {}
@@ -115,20 +115,83 @@ def _table_lines(path: Path) -> List[str]:
 
 
 def _categorize(name: str, char: Optional[str]) -> str:
-    if name.startswith("py_alphabet_"):
-        return "pinyin_alphabet"
     if name.startswith("py_"):
-        return "pronunciation"
+        return "pinyin_alphabet"
     if char is not None and _is_cjk(ord(char)):
         return "hanzi"
     return "other"
+
+
+def _built_output_path(project: Project) -> Optional[Path]:
+    """Path of the built TTF, only when it reflects the current settings."""
+    build = project.tasks.get("build")
+    if build is None or build.status != "done":
+        return None
+    from .pipeline import output_path_for
+
+    path = output_path_for(project)
+    return path if path.exists() else None
+
+
+def _pronunciation_entries(project: Project) -> List[dict]:
+    """Generated pinyin-composed glyphs (<hanzi>.ssNN) from the built font.
+
+    Pronunciation glyphs do not exist in the source fonts — the build
+    composes them as .ss variants (ss00 = pinyin-less, ssNN = reading N).
+    """
+    from .preview_composer import get_pronunciations
+
+    output_path = _built_output_path(project)
+    if output_path is None:
+        return []
+
+    outlines = _FontOutlines(str(output_path), f"out:{output_path.stat().st_mtime}")
+    reverse_cmap: Dict[str, List[int]] = {}
+    for codepoint, glyph_name in outlines.cmap.items():
+        reverse_cmap.setdefault(glyph_name, []).append(codepoint)
+
+    allowed = allowed_hanzi()
+    entries: List[dict] = []
+    for glyph_name in outlines.font.getGlyphOrder():
+        base_name, sep, variant = glyph_name.partition(".ss")
+        if not sep or not variant.isdigit():
+            continue
+        codepoints = sorted(reverse_cmap.get(base_name, []))
+        if not codepoints or not any(cp in allowed for cp in codepoints):
+            continue
+        char = chr(codepoints[0])
+        index = int(variant)
+        readings = get_pronunciations(project, char)
+        if index == 0:
+            reading = None
+        elif index <= len(readings):
+            reading = readings[index - 1]
+        else:
+            continue  # stale variant beyond the current readings
+        entries.append(
+            {
+                "name": glyph_name,
+                "font": "output",
+                "char": char,
+                "codepoints": [f"U+{cp:04X}" for cp in codepoints],
+                "advance_width": outlines.advance_width(glyph_name),
+                "category": "pronunciation",
+                "variant": f"ss{variant}",
+                "reading": reading,
+                "overridden": char in project.glyph_overrides.readings,
+            }
+        )
+    return entries
 
 
 def _build_index(project: Project) -> List[dict]:
     entries: List[dict] = []
     seen: set[str] = set()
 
-    for role, font_ref in (("base", project.base_font), ("pinyin", project.pinyin_font)):
+    for role, font_ref in (
+        ("base", project.base_font),
+        ("pinyin", project.pinyin_font),
+    ):
         if font_ref is None:
             continue
         outlines = _FontOutlines(font_ref.path, font_ref.sha256)
@@ -163,6 +226,8 @@ def _build_index(project: Project) -> List[dict]:
                     ),
                 }
             )
+
+    entries.extend(_pronunciation_entries(project))
     return entries
 
 
@@ -174,7 +239,9 @@ def _fonts_key(project: Project) -> str:
     base = project.base_font.sha256 if project.base_font else "-"
     pinyin = project.pinyin_font.sha256 if project.pinyin_font else "-"
     overrides = ",".join(sorted(project.glyph_overrides.readings))
-    return f"{_INDEX_VERSION}:{base}:{pinyin}:{overrides}"
+    output_path = _built_output_path(project)
+    output = f"{output_path.stat().st_mtime}" if output_path else "-"
+    return f"{_INDEX_VERSION}:{base}:{pinyin}:{overrides}:{output}"
 
 
 def get_index(store: ProjectStore, project: Project) -> List[dict]:
@@ -222,9 +289,7 @@ def search(
         else:
             q_lower = q.lower()
             filtered = [
-                e
-                for e in filtered
-                if q_lower in e["name"].lower() or e["char"] == q
+                e for e in filtered if q_lower in e["name"].lower() or e["char"] == q
             ]
 
     total = len(filtered)
@@ -300,8 +365,11 @@ def ivs_index(store: ProjectStore, project: Project) -> List[dict]:
 
 
 def search_ivs(
-    rows: List[dict], query: str = "", homographs_only: bool = False,
-    page: int = 1, size: int = 50,
+    rows: List[dict],
+    query: str = "",
+    homographs_only: bool = False,
+    page: int = 1,
+    size: int = 50,
 ) -> dict:
     filtered = rows
     if homographs_only:
@@ -326,22 +394,31 @@ def search_ivs(
 
 
 def thumbnail_svg(project: Project, entry: dict) -> Optional[str]:
-    font_ref = project.base_font if entry["font"] == "base" else project.pinyin_font
-    if font_ref is None:
-        return None
-    outlines = _FontOutlines(font_ref.path, font_ref.sha256)
+    if entry["font"] == "output":
+        output_path = _built_output_path(project)
+        if output_path is None:
+            return None
+        outlines = _FontOutlines(str(output_path), f"out:{output_path.stat().st_mtime}")
+        # Pinyin sits above the em square; the built font's raised
+        # ascender covers it
+        top = max(outlines.upem, float(outlines.font["hhea"].ascender))
+    else:
+        font_ref = project.base_font if entry["font"] == "base" else project.pinyin_font
+        if font_ref is None:
+            return None
+        outlines = _FontOutlines(font_ref.path, font_ref.sha256)
+        top = float(outlines.upem)
     try:
         path_d = outlines.svg_path(entry["name"])
     except KeyError:
         return None
-    upem = outlines.upem
     descent = abs(float(outlines.font["hhea"].descender))
-    height = upem + descent
+    height = top + descent
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" '
         f'viewBox="0 0 {entry["advance_width"]:.0f} {height:.0f}">'
         # Fixed fill: these render via <img>, where currentColor
         # would resolve to black and vanish on the dark background
-        f'<g transform="translate(0 {upem}) scale(1 -1)">'
+        f'<g transform="translate(0 {top}) scale(1 -1)">'
         f'<path d="{path_d}" fill="#cbd5e1"/></g></svg>'
     )
