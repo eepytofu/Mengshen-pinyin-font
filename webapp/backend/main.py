@@ -11,10 +11,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import settings
-from .api import build, meta, preview, projects
+from .api import build, glyphs, meta, preview, projects
 from .api.deps import tasks
 
 
@@ -40,14 +41,23 @@ def create_app() -> FastAPI:
     app.include_router(meta.router)
     app.include_router(projects.router)
     app.include_router(preview.router)
+    app.include_router(glyphs.router)
     app.include_router(build.router)
 
     if settings.FRONTEND_DIST.exists():
         app.mount(
-            "/",
-            StaticFiles(directory=settings.FRONTEND_DIST, html=True),
-            name="frontend",
+            "/assets",
+            StaticFiles(directory=settings.FRONTEND_DIST / "assets"),
+            name="assets",
         )
+
+        # SPA fallback: any non-API path serves the frontend entry point
+        @app.get("/{path:path}", include_in_schema=False)
+        async def spa_fallback(path: str) -> FileResponse:
+            static_file = settings.FRONTEND_DIST / path
+            if path and ".." not in path and static_file.is_file():
+                return FileResponse(static_file)
+            return FileResponse(settings.FRONTEND_DIST / "index.html")
 
     return app
 
