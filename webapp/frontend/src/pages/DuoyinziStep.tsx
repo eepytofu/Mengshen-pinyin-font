@@ -50,7 +50,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 export default function DuoyinziStep() {
-  const [tab, setTab] = useState<'duoyinzi' | 'gsub'>('duoyinzi')
+  const [tab, setTab] = useState<'duoyinzi' | 'gsub' | 'ivs'>('duoyinzi')
 
   return (
     <div className="flex h-full flex-col">
@@ -59,6 +59,7 @@ export default function DuoyinziStep() {
           [
             ['duoyinzi', '多音字パターン'],
             ['gsub', 'GSUB (rclt) テーブル'],
+            ['ivs', 'IVS 一覧'],
           ] as const
         ).map(([value, label]) => (
           <button
@@ -74,7 +75,146 @@ export default function DuoyinziStep() {
           </button>
         ))}
       </div>
-      {tab === 'duoyinzi' ? <DuoyinziTab /> : <GsubTab />}
+      {tab === 'duoyinzi' ? <DuoyinziTab /> : tab === 'gsub' ? <GsubTab /> : <IvsTab />}
+    </div>
+  )
+}
+
+interface IvsRow {
+  char: string
+  glyph: string
+  readings: string[]
+  sequences: {
+    selector: string
+    glyph_suffix: string
+    reading: string | null
+    description: string
+  }[]
+}
+
+function IvsTab() {
+  const { projectId } = useProject()
+  const [query, setQuery] = useState('')
+  const [debounced, setDebounced] = useState('')
+  const [homographsOnly, setHomographsOnly] = useState(true)
+  const [page, setPage] = useState(1)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  const data = useQuery({
+    queryKey: ['ivs', projectId, debounced, homographsOnly, page],
+    queryFn: () =>
+      fetchJson<{ total: number; items: IvsRow[] }>(
+        `/api/projects/${projectId}/ivs?q=${encodeURIComponent(debounced)}&homographs_only=${homographsOnly}&page=${page}&size=30`,
+      ),
+    placeholderData: (prev) => prev,
+  })
+
+  const totalPages = data.data ? Math.max(1, Math.ceil(data.data.total / 30)) : 1
+
+  return (
+    <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="mb-4 flex items-center gap-4">
+        <div className="relative max-w-xs flex-1">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
+          <Input
+            className="pl-9"
+            placeholder="文字・拼音・U+E01Ex で検索"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              clearTimeout(timer.current)
+              timer.current = setTimeout(() => {
+                setDebounced(e.target.value)
+                setPage(1)
+              }, 300)
+            }}
+          />
+        </div>
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-400">
+          <input
+            type="checkbox"
+            className="h-4 w-4 accent-indigo-500"
+            checked={homographsOnly}
+            onChange={(e) => {
+              setHomographsOnly(e.target.checked)
+              setPage(1)
+            }}
+          />
+          多音字のみ
+        </label>
+        <span className="ml-auto text-xs text-slate-500">
+          {data.data && `${data.data.total.toLocaleString()} 字に IVS を割り当て`}
+        </span>
+        {data.isFetching && <Spinner />}
+      </div>
+
+      <p className="mb-3 text-xs leading-relaxed text-slate-600">
+        ビルドされるフォントの cmap_uvs（使用想定の IVS）です。文字 + セレクタで
+        読みを強制できます: U+E01E0 = 拼音なし、U+E01E1 = デフォルトの読み
+        （GSUB の文脈置換を無効化して強制）、U+E01E2 以降 = 異読。
+      </p>
+
+      <div className="overflow-hidden rounded-xl border border-line">
+        <table className="w-full text-sm">
+          <thead className="bg-surface-raised text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-4 py-3">文字</th>
+              <th className="px-4 py-3">グリフ</th>
+              <th className="px-4 py-3">IVS シーケンス</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {data.data?.items.map((row) => (
+              <tr key={row.char} className="align-top hover:bg-surface-raised/50">
+                <td className="px-4 py-3 text-2xl text-slate-100">{row.char}</td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-500">
+                  {row.glyph}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-1.5">
+                    {row.sequences.map((seq) => (
+                      <span
+                        key={seq.selector}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1 text-xs"
+                        title={seq.description}
+                      >
+                        <span className="font-mono text-slate-400">
+                          {row.char}
+                          <span className="text-accent-hover">+{seq.selector}</span>
+                        </span>
+                        <span className="text-slate-700">→</span>
+                        {seq.reading ? (
+                          <Badge tone="success">{seq.reading}</Badge>
+                        ) : (
+                          <Badge>拼音なし</Badge>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-4 text-sm">
+          <Button variant="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            前へ
+          </Button>
+          <span className="text-slate-500">
+            {page} / {totalPages}
+          </span>
+          <Button
+            variant="ghost"
+            disabled={page >= totalPages}
+            onClick={() => setPage(page + 1)}
+          >
+            次へ
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

@@ -244,6 +244,87 @@ def find_glyph(entries: List[dict], name: str) -> Optional[dict]:
     return None
 
 
+def ivs_sequences(readings: List[str]) -> List[dict]:
+    """IVS selectors the build assigns to a hanzi with these readings.
+
+    Mirrors FontBuilder._add_cmap_uvs: every hanzi with pinyin gets
+    base+U+E01E0 -> ss00 (pinyin-less); homographs additionally get
+    U+E01E0+i -> ss{i:02d} forcing reading i (GSUB bypassed).
+    """
+    from src.refactored.config.font_config import FontConstants
+
+    if not readings:
+        return []
+    ivs_base = FontConstants.IVS_BASE
+    sequences = [
+        {
+            "selector": f"U+{ivs_base:04X}",
+            "glyph_suffix": "ss00",
+            "reading": None,
+            "description": "拼音なし",
+        }
+    ]
+    if len(readings) > 1:
+        for i, reading in enumerate(readings, start=1):
+            sequences.append(
+                {
+                    "selector": f"U+{ivs_base + i:04X}",
+                    "glyph_suffix": f"ss{i:02d}",
+                    "reading": reading,
+                    "description": "デフォルトの読み（強制）" if i == 1 else "異読",
+                }
+            )
+    return sequences
+
+
+def ivs_index(store: ProjectStore, project: Project) -> List[dict]:
+    """Planned cmap_uvs rows for every hanzi in the project's base font."""
+    from .preview_composer import get_pronunciations
+
+    rows = []
+    for entry in get_index(store, project):
+        if entry["category"] != "hanzi" or entry["font"] != "base" or not entry["char"]:
+            continue
+        readings = get_pronunciations(project, entry["char"])
+        if not readings:
+            continue
+        rows.append(
+            {
+                "char": entry["char"],
+                "glyph": entry["name"],
+                "readings": readings,
+                "sequences": ivs_sequences(readings),
+            }
+        )
+    return rows
+
+
+def search_ivs(
+    rows: List[dict], query: str = "", homographs_only: bool = False,
+    page: int = 1, size: int = 50,
+) -> dict:
+    filtered = rows
+    if homographs_only:
+        filtered = [r for r in filtered if len(r["readings"]) > 1]
+    if query:
+        q = query.strip()
+        filtered = [
+            r
+            for r in filtered
+            if q == r["char"]
+            or any(q in reading for reading in r["readings"])
+            or q.upper() in {s["selector"] for s in r["sequences"]}
+        ]
+    total = len(filtered)
+    start = max(page - 1, 0) * size
+    return {
+        "total": total,
+        "page": page,
+        "size": size,
+        "items": filtered[start : start + size],
+    }
+
+
 def thumbnail_svg(project: Project, entry: dict) -> Optional[str]:
     font_ref = project.base_font if entry["font"] == "base" else project.pinyin_font
     if font_ref is None:
