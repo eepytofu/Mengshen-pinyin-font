@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, type BuiltinFont } from '../api'
 import { Badge, Button, Card } from '../components/ui'
 import type { FontRef } from '../types'
+import { useFontFace } from '../useFontFace'
 import { useProject } from './ProjectLayout'
 
 export default function FontsStep() {
@@ -87,28 +88,15 @@ function FontPicker({
     <Card title={title}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {builtins &&
-          Object.values(builtins).map((builtin) => {
-            const selected = current?.source === `builtin:${builtin.style}`
-            return (
-              <button
-                key={builtin.style}
-                onClick={() => selectBuiltin.mutate(builtin.style)}
-                className={`rounded-lg border p-4 text-left transition-colors ${
-                  selected
-                    ? 'border-accent bg-accent/10'
-                    : 'border-line hover:border-slate-500'
-                }`}
-              >
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-200">
-                    {builtin.label}
-                  </span>
-                  {selected && <Check className="h-4 w-4 text-accent-hover" />}
-                </div>
-                <span className="text-xs text-slate-500">同梱プリセット</span>
-              </button>
-            )
-          })}
+          Object.values(builtins).map((builtin) => (
+            <BuiltinCard
+              key={builtin.style}
+              builtin={builtin}
+              role={role}
+              selected={current?.source === `builtin:${builtin.style}`}
+              onSelect={() => selectBuiltin.mutate(builtin.style)}
+            />
+          ))}
 
         <button
           onClick={() => fileInput.current?.click()}
@@ -137,20 +125,75 @@ function FontPicker({
         <p className="mt-3 text-sm text-rose-400">{(upload.error as Error).message}</p>
       )}
 
-      {current && (
-        <div className="mt-4 flex items-center gap-3 rounded-lg bg-surface px-4 py-3">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-slate-200">{current.family_name}</p>
-            <p className="text-xs text-slate-500">
-              {current.original_filename} ・ {current.glyph_count.toLocaleString()} グリフ ・
-              upem {current.units_per_em}
-            </p>
-          </div>
-          <Badge tone={current.source === 'upload' ? 'accent' : 'default'}>
-            {current.source === 'upload' ? 'アップロード' : 'プリセット'}
-          </Badge>
-        </div>
-      )}
+      {current && <SelectedFontInfo current={current} role={role} projectId={projectId} />}
     </Card>
+  )
+}
+
+function BuiltinCard({
+  builtin,
+  role,
+  selected,
+  onSelect,
+}: {
+  builtin: BuiltinFont
+  role: 'base' | 'pinyin'
+  selected: boolean
+  onSelect: () => void
+}) {
+  // Render the preset label in the preset's own font
+  const family = useFontFace(`/api/builtin-fonts/${builtin.style}/${role}/file`)
+  return (
+    <button
+      onClick={onSelect}
+      className={`rounded-lg border p-4 text-left transition-colors ${
+        selected ? 'border-accent bg-accent/10' : 'border-line hover:border-slate-500'
+      }`}
+    >
+      <div className="mb-1 flex items-center justify-between">
+        <span
+          className="text-sm font-medium text-slate-200"
+          style={family ? { fontFamily: family, fontSize: '1rem' } : undefined}
+        >
+          {builtin.label}
+        </span>
+        {selected && <Check className="h-4 w-4 shrink-0 text-accent-hover" />}
+      </div>
+      <span className="text-xs text-slate-500">同梱プリセット</span>
+    </button>
+  )
+}
+
+function SelectedFontInfo({
+  current,
+  role,
+  projectId,
+}: {
+  current: FontRef
+  role: 'base' | 'pinyin'
+  projectId: string
+}) {
+  // sha256 busts the browser cache when the same path gets a new upload
+  const family = useFontFace(
+    `/api/projects/${projectId}/fonts/${role}/file?v=${current.sha256.slice(0, 12)}`,
+  )
+  return (
+    <div className="mt-4 flex items-center gap-3 rounded-lg bg-surface px-4 py-3">
+      <div className="flex-1">
+        <p
+          className="font-medium text-slate-200"
+          style={family ? { fontFamily: family, fontSize: '1.25rem' } : { fontSize: '0.875rem' }}
+        >
+          {current.family_name}
+        </p>
+        <p className="text-xs text-slate-500">
+          {current.original_filename} ・ {current.glyph_count.toLocaleString()} グリフ ・
+          upem {current.units_per_em}
+        </p>
+      </div>
+      <Badge tone={current.source === 'upload' ? 'accent' : 'default'}>
+        {current.source === 'upload' ? 'アップロード' : 'プリセット'}
+      </Badge>
+    </div>
   )
 }

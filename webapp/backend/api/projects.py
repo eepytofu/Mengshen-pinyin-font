@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from src.refactored.scripts.retrieve_latin_alphabet import ALPHABET
 
@@ -84,6 +85,23 @@ def _set_font(project: Project, role: FontRole, path: Path, source: str) -> Proj
         update={"status": "idle", "stage": None, "progress": 0.0, "error": None}
     )
     return project
+
+
+@router.get("/{project_id}/fonts/{role}/file")
+def font_file(project_id: str, role: FontRole) -> FileResponse:
+    """Serve the selected font binary (for in-browser name preview)."""
+    project = get_project_or_404(project_id)
+    font_ref = project.base_font if role == "base" else project.pinyin_font
+    if font_ref is None:
+        raise HTTPException(status_code=404, detail=f"No {role} font selected")
+    path = Path(font_ref.path)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Font file missing")
+    return FileResponse(
+        path,
+        media_type="font/ttf" if path.suffix == ".ttf" else "font/otf",
+        headers={"Cache-Control": "max-age=3600", "ETag": f'"{font_ref.sha256}"'},
+    )
 
 
 @router.post("/{project_id}/fonts/{role}")
