@@ -262,6 +262,33 @@ function GlyphDetailPanel({
             </dd>
           </div>
         )}
+        {detail.data && detail.data.ivs.length > 0 && (
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-500">
+              IVS 切り替え
+            </dt>
+            <dd className="mt-1.5 space-y-1">
+              {detail.data.ivs.map((seq) => (
+                <div
+                  key={seq.selector}
+                  className="flex items-center gap-2 rounded-md bg-surface px-2 py-1.5 text-xs"
+                >
+                  <span className="font-mono text-slate-400">
+                    {glyph.char}
+                    <span className="text-accent-hover">+{seq.selector}</span>
+                  </span>
+                  <span className="text-slate-600">→</span>
+                  {seq.reading ? (
+                    <Badge tone="success">{seq.reading}</Badge>
+                  ) : (
+                    <Badge>拼音なし</Badge>
+                  )}
+                  <span className="ml-auto text-slate-600">{seq.glyph_suffix}</span>
+                </div>
+              ))}
+            </dd>
+          </div>
+        )}
       </dl>
 
       {glyph.char && (

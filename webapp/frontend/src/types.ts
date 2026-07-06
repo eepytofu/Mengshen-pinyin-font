@@ -96,7 +96,15 @@ export interface GlyphPage {
   glyphs: GlyphEntry[]
 }
 
+export interface IvsSequence {
+  selector: string
+  glyph_suffix: string
+  reading: string | null
+  description: string
+}
+
 export interface GlyphDetail extends GlyphEntry {
   readings: string[]
   tables: { id: string; label: string }[]
+  ivs: IvsSequence[]
 }

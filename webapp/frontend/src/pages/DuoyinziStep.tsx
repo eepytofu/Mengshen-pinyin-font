@@ -295,7 +295,7 @@ function ReadingTree({ detail }: { detail: DuoyinziDetail }) {
           return (
             <div key={reading} className="relative pl-5 pb-4 last:pb-0">
               <span className="absolute left-0 top-4 w-4 border-t-2 border-line" />
-              <div className="flex items-center gap-2 pt-1.5">
+              <div className="flex flex-wrap items-center gap-2 pt-1.5">
                 <span
                   className={`rounded-full border px-2.5 py-0.5 text-sm font-medium ${color}`}
                 >
@@ -303,6 +303,12 @@ function ReadingTree({ detail }: { detail: DuoyinziDetail }) {
                 </span>
                 <span className="text-[10px] uppercase tracking-wide text-slate-600">
                   {index === 0 ? 'デフォルト' : `ss0${index + 1} / 文脈で切替`}
+                </span>
+                <span
+                  className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-slate-500"
+                  title={`IVS: ${detail.char} + U+${(0xe01e1 + index).toString(16).toUpperCase()} でこの読みを強制`}
+                >
+                  IVS U+{(0xe01e1 + index).toString(16).toUpperCase()}
                 </span>
               </div>
               {pattern && pattern.phrases.length > 0 && (
@@ -320,6 +326,18 @@ function ReadingTree({ detail }: { detail: DuoyinziDetail }) {
             </div>
           )
         })}
+        <div className="relative pl-5 pt-1">
+          <span className="absolute left-0 top-4 w-4 border-t-2 border-line" />
+          <div className="flex items-center gap-2 pt-1.5">
+            <span className="rounded-full border border-line px-2.5 py-0.5 text-sm text-slate-500">
+              拼音なし
+            </span>
+            <span className="text-[10px] uppercase tracking-wide text-slate-600">ss00</span>
+            <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-slate-500">
+              IVS U+E01E0
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   )

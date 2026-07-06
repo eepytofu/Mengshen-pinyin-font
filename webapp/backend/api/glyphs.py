@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Response
 
+from src.refactored.config.font_config import FontConstants
+
 from ..services import glyph_catalog
 from ..services.preview_composer import get_pronunciations
 from .deps import get_project_or_404, store
@@ -41,7 +43,43 @@ def glyph_detail(project_id: str, name: str) -> dict:
         {"id": table_id, "label": glyph_catalog.STANDARD_TABLE_LABELS[table_id]}
         for table_id in glyph_catalog.tables_for(codepoints)
     ]
-    return {**entry, "readings": readings, "tables": tables}
+    return {
+        **entry,
+        "readings": readings,
+        "tables": tables,
+        "ivs": ivs_sequences(entry, readings),
+    }
+
+
+def ivs_sequences(entry: dict, readings: list[str]) -> list[dict]:
+    """IVS selectors the build assigns to this character.
+
+    Mirrors FontBuilder._add_cmap_uvs: every hanzi with pinyin gets
+    base+U+E01E0 -> ss00 (pinyin-less); homographs additionally get
+    U+E01E0+i -> ss{i:02d} forcing reading i (GSUB bypassed).
+    """
+    if entry["category"] != "hanzi" or not readings:
+        return []
+    ivs_base = FontConstants.IVS_BASE
+    sequences = [
+        {
+            "selector": f"U+{ivs_base:04X}",
+            "glyph_suffix": "ss00",
+            "reading": None,
+            "description": "拼音なし",
+        }
+    ]
+    if len(readings) > 1:
+        for i, reading in enumerate(readings, start=1):
+            sequences.append(
+                {
+                    "selector": f"U+{ivs_base + i:04X}",
+                    "glyph_suffix": f"ss{i:02d}",
+                    "reading": reading,
+                    "description": "デフォルトの読み（強制）" if i == 1 else "異読",
+                }
+            )
+    return sequences
 
 
 @router.get("/glyphs/{name}/svg")
