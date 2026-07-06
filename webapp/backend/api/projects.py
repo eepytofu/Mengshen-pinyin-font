@@ -63,6 +63,43 @@ def delete_project(project_id: str) -> None:
         raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
 
 
+@router.get("/{project_id}/storage")
+def project_storage(project_id: str) -> dict:
+    """Everything stored for this project, grouped for the UI."""
+    from .. import settings
+
+    get_project_or_404(project_id)
+    root = settings.PATHS.project_root
+
+    def entries(paths: list[Path]) -> list[dict]:
+        rows = []
+        for path in sorted(paths):
+            if path.is_file():
+                rows.append(
+                    {
+                        "name": path.name,
+                        "path": str(path.relative_to(root)),
+                        "size": path.stat().st_size,
+                    }
+                )
+        return rows
+
+    project_dir = store.project_dir(project_id)
+    groups = {
+        "state": entries([project_dir / "project.json"]),
+        "fonts": entries(list(store.fonts_dir(project_id).glob("*"))),
+        "intermediate": entries(
+            list(store.json_dir(project_id).glob("*.json"))
+            + [project_dir / "glyph_index.json"]
+            # Templates from before per-project consolidation
+            + list(settings.JSON_TEMP_DIR.glob(f"*_proj_{project_id}.json"))
+        ),
+        "output": entries(list((settings.OUTPUTS_DIR / project_id).glob("*"))),
+    }
+    total = sum(row["size"] for rows in groups.values() for row in rows)
+    return {"groups": groups, "total": total}
+
+
 def _set_font(project: Project, role: FontRole, path: Path, source: str) -> Project:
     """Attach a font to the project and refresh its license state."""
     font_ref = font_inspector.inspect_font(path, source, path.name)

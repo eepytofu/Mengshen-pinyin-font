@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, CircleAlert, Download, Hammer } from 'lucide-react'
+import { Check, CircleAlert, Download, FolderOpen, Hammer } from 'lucide-react'
 import { api } from '../api'
 import { Badge, Button, Card, Input, Progress, Spinner } from '../components/ui'
 import type { TaskState } from '../types'
@@ -132,7 +132,83 @@ export default function BuildStep() {
           </div>
         </Card>
       )}
+
+      <StorageCard projectId={projectId} refreshKey={`${project.tasks.prepare.status}-${project.tasks.build.status}`} />
     </div>
+  )
+}
+
+interface StorageEntry {
+  name: string
+  path: string
+  size: number
+}
+
+const STORAGE_GROUPS: [string, string][] = [
+  ['state', 'プロジェクト状態（フォント選択・ライセンス合意・読みの変更）'],
+  ['fonts', 'アップロード / 選択フォント'],
+  ['intermediate', '中間ファイル（テンプレート JSON など）'],
+  ['output', 'ビルド成果物'],
+]
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1 << 30) return `${(bytes / (1 << 30)).toFixed(1)} GB`
+  if (bytes >= 1 << 20) return `${(bytes / (1 << 20)).toFixed(1)} MB`
+  if (bytes >= 1 << 10) return `${(bytes / (1 << 10)).toFixed(1)} KB`
+  return `${bytes} B`
+}
+
+function StorageCard({ projectId, refreshKey }: { projectId: string; refreshKey: string }) {
+  const storage = useQuery({
+    queryKey: ['storage', projectId, refreshKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/storage`)
+      return res.json() as Promise<{ groups: Record<string, StorageEntry[]>; total: number }>
+    },
+  })
+
+  if (!storage.data) return null
+
+  return (
+    <Card
+      title={
+        <span className="flex items-center gap-2">
+          <FolderOpen className="h-4 w-4 text-slate-500" />
+          プロジェクトの保存データ（合計 {formatSize(storage.data.total)}）
+        </span>
+      }
+    >
+      <div className="space-y-4">
+        {STORAGE_GROUPS.map(([key, label]) => {
+          const rows = storage.data!.groups[key] ?? []
+          if (rows.length === 0) return null
+          return (
+            <div key={key}>
+              <p className="mb-1.5 text-xs font-medium text-slate-400">{label}</p>
+              <ul className="space-y-1">
+                {rows.map((row) => (
+                  <li
+                    key={row.path}
+                    className="flex items-center justify-between rounded-md bg-surface px-3 py-1.5 text-xs"
+                  >
+                    <span className="truncate font-mono text-slate-400" title={row.path}>
+                      {row.path}
+                    </span>
+                    <span className="ml-3 shrink-0 text-slate-500">
+                      {formatSize(row.size)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        })}
+        <p className="text-xs text-slate-600">
+          すべて tmp/projects/{projectId}/（成果物は outputs/webapp/{projectId}/）に
+          プロジェクト単位で保存され、プロジェクト削除時にまとめて削除されます。
+        </p>
+      </div>
+    </Card>
   )
 }
 

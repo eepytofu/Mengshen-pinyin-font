@@ -35,6 +35,10 @@ export default function FontsStep() {
         current={project.base_font}
         builtins={builtins?.fonts}
         projectId={projectId}
+        confirmNeeded={
+          project.license.base.acknowledged ||
+          project.tasks.prepare.status === 'done'
+        }
       />
       <FontPicker
         role="pinyin"
@@ -42,6 +46,10 @@ export default function FontsStep() {
         current={project.pinyin_font}
         builtins={builtins?.fonts}
         projectId={projectId}
+        confirmNeeded={
+          project.license.pinyin.acknowledged ||
+          project.tasks.prepare.status === 'done'
+        }
       />
 
       <div className="flex justify-end">
@@ -62,18 +70,29 @@ function FontPicker({
   current,
   builtins,
   projectId,
+  confirmNeeded,
 }: {
   role: 'base' | 'pinyin'
   title: string
   current: FontRef | null
   builtins?: Record<string, BuiltinFont>
   projectId: string
+  confirmNeeded: boolean
 }) {
   const queryClient = useQueryClient()
   const fileInput = useRef<HTMLInputElement>(null)
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+
+  // Changing an already-acknowledged/prepared font resets the license
+  // acknowledgment and templates — don't let a stray click do that
+  const confirmChange = (nextLabel: string) =>
+    !confirmNeeded ||
+    confirm(
+      `フォントを「${nextLabel}」に変更すると、ライセンス承認と` +
+        '準備済みテンプレートがリセットされます。変更しますか？',
+    )
 
   const selectBuiltin = useMutation({
     mutationFn: (style: string) => api.selectBuiltin(projectId, role, style),
@@ -94,7 +113,13 @@ function FontPicker({
               builtin={builtin}
               role={role}
               selected={current?.source === `builtin:${builtin.style}`}
-              onSelect={() => selectBuiltin.mutate(builtin.style)}
+              onSelect={() => {
+                const name =
+                  (role === 'base' ? builtin.base_family : builtin.pinyin_family) ??
+                  builtin.label
+                if (current?.source === `builtin:${builtin.style}`) return
+                if (confirmChange(name)) selectBuiltin.mutate(builtin.style)
+              }}
             />
           ))}
 
@@ -115,7 +140,7 @@ function FontPicker({
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0]
-              if (file) upload.mutate(file)
+              if (file && confirmChange(file.name)) upload.mutate(file)
             }}
           />
         </button>

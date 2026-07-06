@@ -46,19 +46,22 @@ cd webapp/frontend && npm run dev   # http://localhost:5173
 6. **読みの編集** — 文字ごとの拼音を置換/追加（ビルド時に反映）
 7. **ビルド** — テンプレート準備（otfccdump）→ フルビルド（otfccbuild）→ TTF ダウンロード
 
-## 中間ファイル
+## プロジェクトごとの保存データ
 
-すべて `tmp/` 以下の JSON（gitignore 済み）:
+各プロジェクトは `tmp/projects/<id>/` に自己完結して保存されます（gitignore 済み）:
 
 | パス | 内容 |
 |---|---|
-| `tmp/projects/<id>/project.json` | プロジェクト状態（フォント・承認・canvas・読み・タスク） |
-| `tmp/projects/<id>/fonts/` | アップロードされたフォント |
+| `tmp/projects/<id>/project.json` | プロジェクト状態（フォント選択・ライセンス合意・canvas・読みの変更・タスク） |
+| `tmp/projects/<id>/fonts/` | アップロード / 正規化されたフォント |
+| `tmp/projects/<id>/json/` | 中間ファイル（テンプレート JSON・ビルド中間の template_output.json） |
 | `tmp/projects/<id>/glyph_index.json` | グリフ一覧のインデックスキャッシュ |
-| `tmp/json/template_*_proj_<id>.json` | otfccdump 由来のテンプレート |
 | `outputs/webapp/<id>/<family>.ttf` | ビルド成果物 |
 
-プロジェクト削除時にこれらの成果物も GC されます。
+ビルド画面の「プロジェクトの保存データ」カードでファイル一覧とサイズを確認できます。
+プロジェクト削除でこれらすべて（成果物含む）が削除されます。
+旧レイアウト（`tmp/json/*_proj_<id>.json`）のテンプレートは読み取り時にフォールバックされ、
+次回の prepare 実行時にプロジェクト配下へ移動されます。
 
 ## テスト
 

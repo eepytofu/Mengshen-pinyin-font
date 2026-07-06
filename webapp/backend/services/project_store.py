@@ -62,6 +62,10 @@ class ProjectStore:
     def fonts_dir(self, project_id: str) -> Path:
         return self.project_dir(project_id) / "fonts"
 
+    def json_dir(self, project_id: str) -> Path:
+        """Per-project intermediate JSONs (templates, build output)."""
+        return self.project_dir(project_id) / "json"
+
     def _project_path(self, project_id: str) -> Path:
         return self.project_dir(project_id) / PROJECT_FILENAME
 
