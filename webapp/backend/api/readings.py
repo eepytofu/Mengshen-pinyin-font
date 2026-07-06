@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 from src.refactored.utils.pinyin_utils import simplification_pronunciation
 
 from ..schemas import Project, ReadingOverride
-from ..services.preview_composer import get_pronunciations
+from ..services.preview_composer import get_base_pronunciations, get_pronunciations
 from .deps import get_project_or_404, store
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["readings"])
@@ -52,7 +52,11 @@ def set_reading(project_id: str, char: str, body: ReadingOverride) -> dict:
         raise HTTPException(status_code=422, detail="Specify exactly one character")
     _validate_pronunciations(body.pronunciations)
 
-    project.glyph_overrides.readings[char] = body
+    # A list identical to the base data is not an override
+    if body.pronunciations == get_base_pronunciations(char):
+        project.glyph_overrides.readings.pop(char, None)
+    else:
+        project.glyph_overrides.readings[char] = body
     store.save(project)
     return _effective(project, char)
 

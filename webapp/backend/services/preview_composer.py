@@ -108,6 +108,11 @@ def _pinyin_references(
 _pinyin_data = PinyinDataManager()
 
 
+def get_base_pronunciations(char: str) -> List[str]:
+    """Readings from the base mapping data, ignoring project overrides."""
+    return _pinyin_data.get_pinyin(char) or []
+
+
 def get_pronunciations(project: Project, char: str) -> List[str]:
     """Effective readings: base data merged with project overrides."""
     override = project.glyph_overrides.readings.get(char)

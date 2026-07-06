@@ -106,6 +106,24 @@ class TestReadingsRoutes:
         )
         assert result.status_code == 422
 
+    def test_reordered_list_saved_and_base_order_clears_override(
+        self, client, project_id
+    ):
+        # Reorder: zhòng first
+        result = client.put(
+            f"/api/projects/{project_id}/readings/中",
+            json={"mode": "replace", "pronunciations": ["zhòng", "zhōng"]},
+        )
+        assert result.json()["readings"] == ["zhòng", "zhōng"]
+        assert result.json()["override"] is not None
+
+        # Restoring the base order removes the override entirely
+        result = client.put(
+            f"/api/projects/{project_id}/readings/中",
+            json={"mode": "replace", "pronunciations": ["zhōng", "zhòng"]},
+        )
+        assert result.json()["override"] is None
+
     def test_append_mode(self, client, project_id):
         result = client.put(
             f"/api/projects/{project_id}/readings/中",

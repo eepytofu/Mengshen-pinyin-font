@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, RotateCcw, X } from 'lucide-react'
+import { GripVertical, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Badge, Button, Card, Input, Spinner } from '../components/ui'
@@ -27,7 +27,6 @@ export default function ReadingsStep() {
   const [char, setChar] = useState(params.get('char') ?? '')
   const [input, setInput] = useState(char)
   const [newReading, setNewReading] = useState('')
-  const [mode, setMode] = useState<'replace' | 'append'>('replace')
   const [error, setError] = useState('')
 
   const reading = useQuery({
@@ -54,14 +53,16 @@ export default function ReadingsStep() {
     queryClient.invalidateQueries({ queryKey: ['project', projectId] })
   }
 
-  const save = useMutation({
-    mutationFn: async (override: ReadingOverride) => {
+  // The list itself is the source of truth: any edit saves the full
+  // ordered readings (first entry = default shown above the hanzi)
+  const saveList = useMutation({
+    mutationFn: async (pronunciations: string[]) => {
       const res = await fetch(
         `/api/projects/${projectId}/readings/${encodeURIComponent(char)}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(override),
+          body: JSON.stringify({ mode: 'replace', pronunciations }),
         },
       )
       if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText)
@@ -75,13 +76,16 @@ export default function ReadingsStep() {
     onError: (e) => setError((e as Error).message),
   })
 
-  const remove = useMutation({
+  const reset = useMutation({
     mutationFn: async () => {
       await fetch(`/api/projects/${projectId}/readings/${encodeURIComponent(char)}`, {
         method: 'DELETE',
       })
     },
-    onSuccess: invalidate,
+    onSuccess: () => {
+      setError('')
+      invalidate()
+    },
   })
 
   useEffect(() => {
@@ -101,8 +105,8 @@ export default function ReadingsStep() {
       <header>
         <h2 className="text-lg font-bold text-slate-100">読み（拼音）の追加・変更</h2>
         <p className="mt-1 text-sm text-slate-500">
-          文字ごとの読みを置換または追加できます。先頭の読みがデフォルト表示になり、
-          2番目以降は IVS / ssXX で切り替えられます。変更は次回ビルドから反映されます。
+          読みはドラッグで並べ替え、ゴミ箱で削除できます。先頭（★）がデフォルト表示になり、
+          2番目以降は多音字パターンや IVS で切り替えられます。変更は次回ビルドから反映されます。
         </p>
       </header>
 
@@ -126,9 +130,7 @@ export default function ReadingsStep() {
           title={`「${char}」の読み`}
           actions={
             reading.data.override ? (
-              <Badge tone="accent">
-                オーバーライド ({reading.data.override.mode})
-              </Badge>
+              <Badge tone="accent">変更あり</Badge>
             ) : (
               <Badge>ベースデータ</Badge>
             )
@@ -147,69 +149,52 @@ export default function ReadingsStep() {
                 </div>
               )}
             </div>
-            <div className="flex-1 space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {reading.data.readings.map((r, i) => (
-                  <Badge key={r} tone={i === 0 ? 'success' : 'accent'}>
-                    {i === 0 && '★ '}
-                    {r}
-                  </Badge>
-                ))}
-                {reading.data.readings.length === 0 && (
-                  <span className="text-sm text-slate-500">読みが登録されていません</span>
-                )}
-              </div>
 
-              <div className="space-y-2 border-t border-line pt-4">
-                <div className="flex gap-2">
-                  <Input
-                    className="max-w-[10rem]"
-                    placeholder="zhōng"
-                    value={newReading}
-                    onChange={(e) => setNewReading(e.target.value)}
-                  />
-                  <select
-                    className="rounded-lg border border-line bg-surface px-2 text-sm text-slate-300"
-                    value={mode}
-                    onChange={(e) => setMode(e.target.value as 'replace' | 'append')}
-                  >
-                    <option value="replace">置換（この読みのみに）</option>
-                    <option value="append">追加（既存の読みに足す）</option>
-                  </select>
-                  <Button
-                    disabled={!newReading.trim()}
-                    onClick={() => {
-                      const pronunciations =
-                        mode === 'replace'
-                          ? [newReading.trim(), ...reading.data!.readings.filter((r) => r !== newReading.trim())]
-                          : [newReading.trim()]
-                      save.mutate({ mode, pronunciations })
-                    }}
-                  >
-                    <span className="flex items-center gap-1">
-                      <Plus className="h-4 w-4" /> 適用
-                    </span>
-                  </Button>
-                </div>
-                <p className="text-xs text-slate-600">
-                  置換はデフォルトの読みを差し替えます（既存の読みは後ろに残ります）。
-                </p>
-                {error && <p className="text-sm text-rose-400">{error}</p>}
+            <div className="flex-1 space-y-4">
+              <ReadingList
+                readings={reading.data.readings}
+                onChange={(next) => saveList.mutate(next)}
+                busy={saveList.isPending}
+              />
+
+              <div className="flex gap-2 border-t border-line pt-4">
+                <Input
+                  className="max-w-[10rem]"
+                  placeholder="zhōng"
+                  value={newReading}
+                  onChange={(e) => setNewReading(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newReading.trim()) {
+                      saveList.mutate([...reading.data!.readings, newReading.trim()])
+                    }
+                  }}
+                />
+                <Button
+                  disabled={!newReading.trim() || saveList.isPending}
+                  onClick={() =>
+                    saveList.mutate([...reading.data!.readings, newReading.trim()])
+                  }
+                >
+                  <span className="flex items-center gap-1">
+                    <Plus className="h-4 w-4" /> 追加
+                  </span>
+                </Button>
                 {reading.data.override && (
-                  <Button variant="ghost" onClick={() => remove.mutate()}>
+                  <Button variant="ghost" onClick={() => reset.mutate()}>
                     <span className="flex items-center gap-1">
-                      <RotateCcw className="h-4 w-4" /> ベースデータに戻す
+                      <RotateCcw className="h-4 w-4" /> ベースに戻す
                     </span>
                   </Button>
                 )}
               </div>
+              {error && <p className="text-sm text-rose-400">{error}</p>}
             </div>
           </div>
         </Card>
       )}
 
       {overrides.length > 0 && (
-        <Card title={`オーバーライド一覧 (${overrides.length})`}>
+        <Card title={`変更した文字 (${overrides.length})`}>
           <ul className="divide-y divide-line">
             {overrides.map(([overrideChar, override]) => (
               <li key={overrideChar} className="flex items-center gap-3 py-2">
@@ -222,18 +207,21 @@ export default function ReadingsStep() {
                 >
                   {overrideChar}
                 </button>
-                <Badge tone="accent">{override.mode}</Badge>
                 <span className="flex-1 text-sm text-slate-400">
                   {override.pronunciations.join(', ')}
                 </span>
                 <button
                   className="text-slate-600 hover:text-rose-400"
+                  title="変更を破棄してベースに戻す"
                   onClick={async () => {
                     await fetch(
                       `/api/projects/${projectId}/readings/${encodeURIComponent(overrideChar)}`,
                       { method: 'DELETE' },
                     )
                     queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+                    queryClient.invalidateQueries({
+                      queryKey: ['reading', projectId, overrideChar],
+                    })
                   }}
                 >
                   <X className="h-4 w-4" />
@@ -244,5 +232,79 @@ export default function ReadingsStep() {
         </Card>
       )}
     </div>
+  )
+}
+
+/** Ordered reading list with HTML5 drag & drop reordering and deletion. */
+function ReadingList({
+  readings,
+  onChange,
+  busy,
+}: {
+  readings: string[]
+  onChange: (next: string[]) => void
+  busy: boolean
+}) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [overIndex, setOverIndex] = useState<number | null>(null)
+
+  const drop = () => {
+    if (dragIndex === null || overIndex === null || dragIndex === overIndex) {
+      setDragIndex(null)
+      setOverIndex(null)
+      return
+    }
+    const next = [...readings]
+    const [moved] = next.splice(dragIndex, 1)
+    next.splice(overIndex, 0, moved)
+    setDragIndex(null)
+    setOverIndex(null)
+    onChange(next)
+  }
+
+  if (readings.length === 0) {
+    return <p className="text-sm text-slate-500">読みが登録されていません。追加してください。</p>
+  }
+
+  return (
+    <ul className={`space-y-1.5 ${busy ? 'pointer-events-none opacity-60' : ''}`}>
+      {readings.map((reading, index) => (
+        <li
+          key={`${reading}-${index}`}
+          draggable
+          onDragStart={() => setDragIndex(index)}
+          onDragOver={(e) => {
+            e.preventDefault()
+            setOverIndex(index)
+          }}
+          onDrop={drop}
+          onDragEnd={() => {
+            setDragIndex(null)
+            setOverIndex(null)
+          }}
+          className={`flex cursor-grab items-center gap-2 rounded-lg border px-3 py-2 transition-colors active:cursor-grabbing ${
+            overIndex === index && dragIndex !== null && dragIndex !== index
+              ? 'border-accent bg-accent/10'
+              : 'border-line bg-surface'
+          } ${dragIndex === index ? 'opacity-40' : ''}`}
+        >
+          <GripVertical className="h-4 w-4 shrink-0 text-slate-600" />
+          <span className="flex-1 text-sm text-slate-200">{reading}</span>
+          {index === 0 ? (
+            <Badge tone="success">★ デフォルト</Badge>
+          ) : (
+            <Badge>ss0{index + 1}</Badge>
+          )}
+          <button
+            className="text-slate-600 hover:text-rose-400 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-slate-600"
+            title={readings.length === 1 ? '最後の読みは削除できません' : 'この読みを削除'}
+            disabled={readings.length === 1}
+            onClick={() => onChange(readings.filter((_, i) => i !== index))}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </li>
+      ))}
+    </ul>
   )
 }
