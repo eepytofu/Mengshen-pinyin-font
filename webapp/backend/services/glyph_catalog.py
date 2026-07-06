@@ -13,14 +13,78 @@ import threading
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from .. import settings
 from ..schemas import Project
 from .preview_composer import _FontOutlines
 from .project_store import ProjectStore
 
 INDEX_FILENAME = "glyph_index.json"
+# Bump when index build logic changes so cached glyph_index.json regenerates
+_INDEX_VERSION = "v2"
 
 _index_lock = threading.Lock()
 _index_cache: Dict[str, tuple[str, List[dict]]] = {}
+_allowed_hanzi_cache: Optional[frozenset[int]] = None
+
+# CJK blocks considered "hanzi" (incl. radicals, ext A/B+, compatibility)
+_CJK_RANGES = (
+    (0x2E80, 0x2FDF),
+    (0x3400, 0x4DBF),
+    (0x4E00, 0x9FFF),
+    (0xF900, 0xFAFF),
+    (0x20000, 0x2FA1F),
+)
+
+
+def _is_cjk(codepoint: int) -> bool:
+    return any(start <= codepoint <= end for start, end in _CJK_RANGES)
+
+
+def allowed_hanzi() -> frozenset[int]:
+    """Union of 通用规范汉字表 (TGSCC), Big5 (2003), and 常用漢字表 (2010).
+
+    The glyph browser only lists hanzi from these standard tables;
+    everything else in the fonts' CJK blocks is noise for this UI.
+    """
+    global _allowed_hanzi_cache
+    if _allowed_hanzi_cache is not None:
+        return _allowed_hanzi_cache
+
+    tables_dir = settings.PATHS.resources_dir / "download_unicode_tables"
+    codepoints: set[int] = set()
+
+    # TGSCC-Unicode.txt: "<index>\tU+XXXX"
+    for line in _table_lines(tables_dir / "TGSCC-Unicode.txt"):
+        parts = line.split()
+        if len(parts) >= 2 and parts[1].startswith("U+"):
+            codepoints.add(int(parts[1][2:], 16))
+
+    # big5_2003-u2b.txt: "0xA1B1 0x00A7" (2nd column is Unicode; keep CJK only)
+    for line in _table_lines(tables_dir / "big5_2003-u2b.txt"):
+        parts = line.split()
+        if len(parts) >= 2 and parts[1].startswith("0x"):
+            codepoint = int(parts[1], 16)
+            if _is_cjk(codepoint):
+                codepoints.add(codepoint)
+
+    # joyokanjihyo_20101130.txt: "04E00: 一"
+    for line in _table_lines(tables_dir / "joyokanjihyo_20101130.txt"):
+        head = line.split(":", 1)[0].strip()
+        if head and all(c in "0123456789ABCDEFabcdef" for c in head):
+            codepoints.add(int(head, 16))
+
+    _allowed_hanzi_cache = frozenset(codepoints)
+    return _allowed_hanzi_cache
+
+
+def _table_lines(path: Path) -> List[str]:
+    if not path.exists():
+        return []
+    return [
+        line
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
 
 
 def _categorize(name: str, char: Optional[str]) -> str:
@@ -28,9 +92,7 @@ def _categorize(name: str, char: Optional[str]) -> str:
         return "pinyin_alphabet"
     if name.startswith("py_"):
         return "pronunciation"
-    if char is not None and 0x2E80 <= ord(char) <= 0x9FFF or (
-        char is not None and 0x3400 <= ord(char) <= 0x4DBF
-    ):
+    if char is not None and _is_cjk(ord(char)):
         return "hanzi"
     return "other"
 
@@ -47,6 +109,7 @@ def _build_index(project: Project) -> List[dict]:
         for codepoint, glyph_name in outlines.cmap.items():
             reverse_cmap.setdefault(glyph_name, []).append(codepoint)
 
+        allowed = allowed_hanzi()
         for glyph_name in outlines.font.getGlyphOrder():
             if glyph_name in seen:
                 continue
@@ -54,6 +117,10 @@ def _build_index(project: Project) -> List[dict]:
             codepoints = sorted(reverse_cmap.get(glyph_name, []))
             char = chr(codepoints[0]) if codepoints else None
             category = _categorize(glyph_name, char)
+            # Hanzi are restricted to the standard tables
+            # (通用规范汉字表 / Big5 / 常用漢字表)
+            if category == "hanzi" and not any(cp in allowed for cp in codepoints):
+                continue
             if role == "pinyin" and category == "other" and char and char.isalpha():
                 category = "pinyin_alphabet"
             entries.append(
@@ -80,7 +147,7 @@ def _fonts_key(project: Project) -> str:
     base = project.base_font.sha256 if project.base_font else "-"
     pinyin = project.pinyin_font.sha256 if project.pinyin_font else "-"
     overrides = ",".join(sorted(project.glyph_overrides.readings))
-    return f"{base}:{pinyin}:{overrides}"
+    return f"{_INDEX_VERSION}:{base}:{pinyin}:{overrides}"
 
 
 def get_index(store: ProjectStore, project: Project) -> List[dict]:
