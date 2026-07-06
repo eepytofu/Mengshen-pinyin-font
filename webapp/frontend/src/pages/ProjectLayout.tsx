@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft,
+  BookOpenText,
   FileText,
   Grid3X3,
   Package,
@@ -17,6 +18,7 @@ const STEPS = [
   { path: 'license', label: 'ライセンス', icon: ScrollText },
   { path: 'adjust', label: '位置調整', icon: SlidersHorizontal },
   { path: 'glyphs', label: 'グリフ', icon: Grid3X3 },
+  { path: 'duoyinzi', label: '多音字 / GSUB', icon: BookOpenText },
   { path: 'build', label: 'ビルド', icon: Package },
 ]
 
