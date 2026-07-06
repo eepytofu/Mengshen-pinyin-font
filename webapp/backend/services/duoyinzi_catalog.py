@@ -127,6 +127,41 @@ def find_duoyinzi(char: str) -> Optional[dict]:
     return None
 
 
+def duoyinzi_detail(char: str) -> Optional[dict]:
+    """Index row plus expanded phrase-pattern structure for visualization."""
+    row = find_duoyinzi(char)
+    if row is None:
+        return None
+
+    def expand(patterns: Dict[str, dict]) -> List[dict]:
+        expanded = []
+        for phrase, spec in patterns.items():
+            if char not in phrase or not isinstance(spec, dict):
+                continue
+            sequence = []
+            for step in spec.get("pattern", []):
+                for step_char, lookup in step.items():
+                    sequence.append({"char": step_char, "lookup": lookup})
+            expanded.append(
+                {
+                    "phrase": phrase,
+                    "ignore": spec.get("ignore"),
+                    "sequence": sequence,
+                }
+            )
+        return expanded
+
+    return {
+        **row,
+        "pattern_two_detail": expand(
+            _load_phrase_patterns("duoyinzi_pattern_two.json")
+        ),
+        "exceptional_detail": expand(
+            _load_phrase_patterns("duoyinzi_exceptional_pattern.json")
+        ),
+    }
+
+
 def _generate_gsub(project: Project) -> dict:
     templates = template_paths_for(project)
     template_main = templates["template_main"]

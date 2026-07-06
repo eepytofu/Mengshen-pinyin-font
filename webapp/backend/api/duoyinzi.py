@@ -25,7 +25,7 @@ def list_duoyinzi(
 @router.get("/duoyinzi/{char}")
 def duoyinzi_detail(project_id: str, char: str) -> dict:
     get_project_or_404(project_id)
-    row = duoyinzi_catalog.find_duoyinzi(char)
+    row = duoyinzi_catalog.duoyinzi_detail(char)
     if row is None:
         raise HTTPException(status_code=404, detail=f"Not a known homograph: {char}")
     return row

@@ -12,6 +12,17 @@ interface DuoyinziRow {
   exceptional_phrases: string[]
 }
 
+interface PhrasePattern {
+  phrase: string
+  ignore: string | null
+  sequence: { char: string; lookup: string | null }[]
+}
+
+interface DuoyinziDetail extends DuoyinziRow {
+  pattern_two_detail: PhrasePattern[]
+  exceptional_detail: PhrasePattern[]
+}
+
 interface GsubOverview {
   languages: Record<string, { features: string[] }>
   features: Record<string, string[]>
@@ -73,6 +84,7 @@ function DuoyinziTab() {
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
   const [page, setPage] = useState(1)
+  const [selected, setSelected] = useState<string | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const data = useQuery({
@@ -87,7 +99,8 @@ function DuoyinziTab() {
   const totalPages = data.data ? Math.max(1, Math.ceil(data.data.total / 30)) : 1
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-4">
+    <div className="flex flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto px-6 py-4">
       <div className="mb-4 flex items-center gap-3">
         <div className="relative max-w-xs flex-1">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
@@ -123,7 +136,15 @@ function DuoyinziTab() {
           </thead>
           <tbody className="divide-y divide-line">
             {data.data?.items.map((row) => (
-              <tr key={row.char} className="align-top hover:bg-surface-raised/50">
+              <tr
+                key={row.char}
+                onClick={() => setSelected(row.char)}
+                className={`cursor-pointer align-top transition-colors ${
+                  selected === row.char
+                    ? 'bg-accent/10'
+                    : 'hover:bg-surface-raised/50'
+                }`}
+              >
                 <td className="px-4 py-3 text-2xl text-slate-100">{row.char}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1.5">
@@ -161,23 +182,228 @@ function DuoyinziTab() {
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-4 text-sm">
-          <Button variant="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            前へ
-          </Button>
-          <span className="text-slate-500">
-            {page} / {totalPages}
-          </span>
-          <Button
-            variant="ghost"
-            disabled={page >= totalPages}
-            onClick={() => setPage(page + 1)}
-          >
-            次へ
-          </Button>
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-center gap-4 text-sm">
+            <Button variant="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              前へ
+            </Button>
+            <span className="text-slate-500">
+              {page} / {totalPages}
+            </span>
+            <Button
+              variant="ghost"
+              disabled={page >= totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              次へ
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {selected && (
+        <PatternGraphPanel
+          projectId={projectId}
+          char={selected}
+          onClose={() => setSelected(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+const SS_COLORS = [
+  'text-emerald-400 border-emerald-500/40 bg-emerald-500/10',
+  'text-sky-400 border-sky-500/40 bg-sky-500/10',
+  'text-amber-400 border-amber-500/40 bg-amber-500/10',
+  'text-rose-400 border-rose-500/40 bg-rose-500/10',
+]
+
+function PatternGraphPanel({
+  projectId,
+  char,
+  onClose,
+}: {
+  projectId: string
+  char: string
+  onClose: () => void
+}) {
+  const detail = useQuery({
+    queryKey: ['duoyinzi-detail', projectId, char],
+    queryFn: () =>
+      fetchJson<DuoyinziDetail>(
+        `/api/projects/${projectId}/duoyinzi/${encodeURIComponent(char)}`,
+      ),
+  })
+
+  return (
+    <aside className="w-[26rem] shrink-0 overflow-y-auto border-l border-line bg-surface-raised p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-100">パターンの関係</h3>
+        <button onClick={onClose} className="text-slate-500 hover:text-slate-300">
+          ✕
+        </button>
+      </div>
+
+      {!detail.data ? (
+        <div className="flex justify-center py-10">
+          <Spinner />
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <ReadingTree detail={detail.data} />
+
+          {detail.data.pattern_two_detail.length > 0 && (
+            <PhrasePatternList
+              title="熟語パターン (rclt_1)"
+              patterns={detail.data.pattern_two_detail}
+              focusChar={char}
+            />
+          )}
+          {detail.data.exceptional_detail.length > 0 && (
+            <PhrasePatternList
+              title="例外パターン (rclt_2)"
+              patterns={detail.data.exceptional_detail}
+              focusChar={char}
+            />
+          )}
         </div>
       )}
+    </aside>
+  )
+}
+
+/**
+ * Tree: character -> readings -> trigger phrases.
+ * Reading #1 is the default; others are applied by rclt context rules.
+ */
+function ReadingTree({ detail }: { detail: DuoyinziDetail }) {
+  const phrasesByPinyin = new Map(
+    detail.pattern_one.map((p) => [p.pinyin, p] as const),
+  )
+
+  return (
+    <div className="flex items-start gap-0">
+      <div className="sticky top-0 flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 border-accent/50 bg-accent/10 text-4xl text-slate-100">
+        {detail.char}
+      </div>
+      <div className="mt-8 w-5 shrink-0 border-t-2 border-line" />
+      <div className="min-w-0 flex-1 border-l-2 border-line">
+        {detail.readings.map((reading, index) => {
+          const pattern = phrasesByPinyin.get(reading)
+          const color = SS_COLORS[index % SS_COLORS.length]
+          return (
+            <div key={reading} className="relative pl-5 pb-4 last:pb-0">
+              <span className="absolute left-0 top-4 w-4 border-t-2 border-line" />
+              <div className="flex items-center gap-2 pt-1.5">
+                <span
+                  className={`rounded-full border px-2.5 py-0.5 text-sm font-medium ${color}`}
+                >
+                  {reading}
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-slate-600">
+                  {index === 0 ? 'デフォルト' : `ss0${index + 1} / 文脈で切替`}
+                </span>
+              </div>
+              {pattern && pattern.phrases.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {pattern.phrases.map((phrase) => (
+                    <PhraseChip key={phrase} phrase={phrase} char={detail.char} color={color} />
+                  ))}
+                </div>
+              )}
+              {(!pattern || pattern.phrases.length === 0) && index > 0 && (
+                <p className="mt-1 text-[11px] text-slate-600">
+                  単語コンテキスト（rclt_0）の登録なし
+                </p>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** One trigger phrase; ~ is the homograph position. */
+function PhraseChip({
+  phrase,
+  char,
+  color,
+}: {
+  phrase: string
+  char: string
+  color: string
+}) {
+  return (
+    <span className="inline-flex overflow-hidden rounded-md border border-line text-sm">
+      {[...phrase].map((c, i) =>
+        c === '~' ? (
+          <span key={i} className={`border-x px-1.5 py-0.5 font-medium ${color}`}>
+            {char}
+          </span>
+        ) : (
+          <span key={i} className="bg-surface px-1.5 py-0.5 text-slate-300">
+            {c}
+          </span>
+        ),
+      )}
+    </span>
+  )
+}
+
+/** Sequence diagrams for pattern-two / exceptional phrase rules. */
+function PhrasePatternList({
+  title,
+  patterns,
+  focusChar,
+}: {
+  title: string
+  patterns: PhrasePattern[]
+  focusChar: string
+}) {
+  return (
+    <div>
+      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {title}
+      </h4>
+      <div className="space-y-2">
+        {patterns.map((pattern) => (
+          <div
+            key={pattern.phrase}
+            className="rounded-lg border border-line bg-surface px-3 py-2"
+          >
+            <div className="flex flex-wrap items-center gap-1">
+              {pattern.sequence.map((step, i) => (
+                <span key={i} className="flex items-center gap-1">
+                  {i > 0 && <span className="text-slate-700">→</span>}
+                  <span
+                    className={`rounded-md px-2 py-1 text-lg leading-none ${
+                      step.lookup
+                        ? 'bg-accent/15 text-accent-hover ring-1 ring-accent/40'
+                        : step.char === focusChar
+                          ? 'bg-surface-overlay text-slate-100'
+                          : 'bg-surface-overlay text-slate-400'
+                    }`}
+                    title={step.lookup ?? undefined}
+                  >
+                    {step.char}
+                  </span>
+                </span>
+              ))}
+              <span className="ml-2 text-[10px] text-slate-600">
+                枠付き = 読みが切り替わる位置
+              </span>
+            </div>
+            {pattern.ignore && (
+              <p className="mt-1.5 text-[11px] text-slate-500">
+                除外コンテキスト: <span className="text-slate-400">{pattern.ignore}</span>
+                （' の位置では切り替えない）
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
