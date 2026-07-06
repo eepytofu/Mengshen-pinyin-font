@@ -49,6 +49,11 @@ def start_prepare(project_id: str) -> TaskState:
     if project.tasks["prepare"].status == "running":
         raise HTTPException(status_code=409, detail="Prepare already running")
 
+    # Regenerating templates makes any previously built TTF stale
+    if project.tasks["build"].status != "idle":
+        project.tasks["build"] = TaskState()
+        store.save(project)
+
     def job(current: Project, on_progress) -> None:
         artifacts = pipeline.run_prepare(current, on_progress)
         fresh = store.get(current.id)
@@ -71,7 +76,10 @@ def start_build(project_id: str) -> TaskState:
 
     def job(current: Project, on_progress) -> None:
         pinyin_manager = None
-        if current.glyph_overrides.readings or current.glyph_overrides.excluded_characters:
+        if (
+            current.glyph_overrides.readings
+            or current.glyph_overrides.excluded_characters
+        ):
             from src.refactored.data import PinyinDataManager
 
             from ..services.overlay_pinyin_source import OverlayPinyinDataSource
@@ -99,6 +107,12 @@ def get_task(project_id: str, kind: TaskKind) -> TaskState:
 @router.get("/download")
 def download(project_id: str) -> FileResponse:
     project = get_project_or_404(project_id)
+    # A leftover TTF from before a font/canvas/readings change must not be
+    # served — only a build of the current settings counts
+    if project.tasks["build"].status != "done":
+        raise HTTPException(
+            status_code=409, detail="Font has not been built for the current settings"
+        )
     output_path = pipeline.output_path_for(project)
     if not output_path.exists():
         raise HTTPException(status_code=404, detail="Font has not been built yet")

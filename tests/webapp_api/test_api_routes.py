@@ -82,6 +82,62 @@ class TestProjectRoutes:
         assert "not acknowledged" in result.json()["detail"]
 
 
+class TestBuildInvalidation:
+    """A stale TTF must never look downloadable."""
+
+    @pytest.fixture
+    def built_project(self, client, store):
+        project = client.post("/api/projects", json={"name": "Test"}).json()
+        client.put(
+            f"/api/projects/{project['id']}/fonts/base/builtin",
+            json={"style": "han_serif"},
+        )
+        # Simulate a completed build directly in the store
+        saved = store.get(project["id"])
+        saved.tasks["build"] = saved.tasks["build"].model_copy(
+            update={"status": "done", "progress": 1.0}
+        )
+        store.save(saved)
+        return project["id"]
+
+    def test_download_requires_build_done(self, client):
+        project = client.post("/api/projects", json={"name": "Test"}).json()
+        result = client.get(f"/api/projects/{project['id']}/download")
+        assert result.status_code == 409
+        assert "not been built" in result.json()["detail"]
+
+    def test_font_change_resets_build(self, client, built_project):
+        body = client.put(
+            f"/api/projects/{built_project}/fonts/base/builtin",
+            json={"style": "handwritten"},
+        ).json()
+        assert body["tasks"]["build"]["status"] == "idle"
+        assert client.get(f"/api/projects/{built_project}/download").status_code == 409
+
+    def test_canvas_change_resets_build(self, client, built_project):
+        canvas = client.get(f"/api/projects/{built_project}").json()["canvas"]
+        canvas["pinyin"]["tracking"] = 99.0
+        body = client.patch(
+            f"/api/projects/{built_project}", json={"canvas": canvas}
+        ).json()
+        assert body["tasks"]["build"]["status"] == "idle"
+
+    def test_identical_canvas_patch_keeps_build(self, client, built_project):
+        canvas = client.get(f"/api/projects/{built_project}").json()["canvas"]
+        body = client.patch(
+            f"/api/projects/{built_project}", json={"canvas": canvas}
+        ).json()
+        assert body["tasks"]["build"]["status"] == "done"
+
+    def test_reading_change_resets_build(self, client, built_project):
+        client.put(
+            f"/api/projects/{built_project}/readings/中",
+            json={"mode": "replace", "pronunciations": ["zhòng"]},
+        )
+        project = client.get(f"/api/projects/{built_project}").json()
+        assert project["tasks"]["build"]["status"] == "idle"
+
+
 class TestReadingsRoutes:
     @pytest.fixture
     def project_id(self, client):

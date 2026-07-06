@@ -10,6 +10,7 @@ from src.refactored.utils.pinyin_utils import simplification_pronunciation
 from ..schemas import Project, ReadingOverride
 from ..services.preview_composer import get_base_pronunciations, get_pronunciations
 from .deps import get_project_or_404, store
+from .projects import invalidate_build
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["readings"])
 
@@ -52,11 +53,14 @@ def set_reading(project_id: str, char: str, body: ReadingOverride) -> dict:
         raise HTTPException(status_code=422, detail="Specify exactly one character")
     _validate_pronunciations(body.pronunciations)
 
+    before = project.glyph_overrides.readings.get(char)
     # A list identical to the base data is not an override
     if body.pronunciations == get_base_pronunciations(char):
         project.glyph_overrides.readings.pop(char, None)
     else:
         project.glyph_overrides.readings[char] = body
+    if project.glyph_overrides.readings.get(char) != before:
+        invalidate_build(project)
     store.save(project)
     return _effective(project, char)
 
@@ -67,5 +71,6 @@ def delete_reading(project_id: str, char: str) -> dict:
     if char not in project.glyph_overrides.readings:
         raise HTTPException(status_code=404, detail=f"No override for: {char}")
     del project.glyph_overrides.readings[char]
+    invalidate_build(project)
     store.save(project)
     return _effective(project, char)

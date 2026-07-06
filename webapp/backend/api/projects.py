@@ -19,6 +19,7 @@ from ..schemas import (
     Project,
     ProjectCreateRequest,
     ProjectPatchRequest,
+    TaskState,
 )
 from ..services import font_inspector
 from ..services.pipeline import BUILTIN_FONTS
@@ -50,10 +51,12 @@ def patch_project(project_id: str, body: ProjectPatchRequest) -> Project:
         project.name = body.name
     if body.step is not None:
         project.step = body.step
-    if body.canvas is not None:
+    if body.canvas is not None and body.canvas != project.canvas:
         project.canvas = body.canvas
-    if body.output is not None:
+        invalidate_build(project)
+    if body.output is not None and body.output != project.output:
         project.output = body.output
+        invalidate_build(project)
     return store.save(project)
 
 
@@ -100,6 +103,12 @@ def project_storage(project_id: str) -> dict:
     return {"groups": groups, "total": total}
 
 
+def invalidate_build(project: Project) -> None:
+    """A previously built TTF no longer reflects the project settings."""
+    if project.tasks["build"].status != "idle":
+        project.tasks["build"] = TaskState()
+
+
 def _set_font(project: Project, role: FontRole, path: Path, source: str) -> Project:
     """Attach a font to the project and refresh its license state."""
     font_ref = font_inspector.inspect_font(path, source, path.name)
@@ -117,10 +126,12 @@ def _set_font(project: Project, role: FontRole, path: Path, source: str) -> Proj
         font_sha256=font_ref.sha256,
     )
 
-    # Templates prepared for the previous font are stale now
+    # Templates prepared for the previous font are stale now, and so is
+    # any TTF built from them
     project.tasks["prepare"] = project.tasks["prepare"].model_copy(
         update={"status": "idle", "stage": None, "progress": 0.0, "error": None}
     )
+    invalidate_build(project)
     return project
 
 
