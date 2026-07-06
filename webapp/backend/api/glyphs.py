@@ -36,7 +36,12 @@ def glyph_detail(project_id: str, name: str) -> dict:
         raise HTTPException(status_code=404, detail=f"Glyph not found: {name}")
 
     readings = get_pronunciations(project, entry["char"]) if entry["char"] else []
-    return {**entry, "readings": readings}
+    codepoints = [int(cp[2:], 16) for cp in entry["codepoints"]]
+    tables = [
+        {"id": table_id, "label": glyph_catalog.STANDARD_TABLE_LABELS[table_id]}
+        for table_id in glyph_catalog.tables_for(codepoints)
+    ]
+    return {**entry, "readings": readings, "tables": tables}
 
 
 @router.get("/glyphs/{name}/svg")

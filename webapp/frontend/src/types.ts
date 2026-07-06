@@ -98,4 +98,5 @@ export interface GlyphPage {
 
 export interface GlyphDetail extends GlyphEntry {
   readings: string[]
+  tables: { id: string; label: string }[]
 }

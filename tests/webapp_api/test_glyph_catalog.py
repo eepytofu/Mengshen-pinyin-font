@@ -26,3 +26,16 @@ class TestAllowedHanzi:
     def test_non_cjk_from_big5_excluded(self):
         # Big5 table contains symbols like § (0x00A7); they must not leak in
         assert 0x00A7 not in allowed_hanzi()
+
+
+class TestTablesFor:
+    def test_membership_per_table(self):
+        from webapp.backend.services.glyph_catalog import tables_for
+
+        # 中 is in all three tables
+        assert tables_for([ord("中")]) == ["tgscc", "big5", "joyo"]
+        # 塩 is a Japanese shinjitai — joyo only
+        assert tables_for([ord("塩")]) == ["joyo"]
+        # 龜 is traditional — Big5 (also joyo? 亀 is joyo, 龜 is not)
+        assert "big5" in tables_for([ord("龜")])
+        assert tables_for([0x00A7]) == []

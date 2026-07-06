@@ -238,6 +238,18 @@ function GlyphDetailPanel({
             </Badge>
           </dd>
         </div>
+        {detail.data && detail.data.tables.length > 0 && (
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-500">所属字表</dt>
+            <dd className="mt-1 flex flex-wrap gap-1.5">
+              {detail.data.tables.map((table) => (
+                <Badge key={table.id} tone="accent">
+                  {table.label}
+                </Badge>
+              ))}
+            </dd>
+          </div>
+        )}
         {detail.data && detail.data.readings.length > 0 && (
           <div>
             <dt className="text-xs uppercase tracking-wide text-slate-500">読み（拼音）</dt>
