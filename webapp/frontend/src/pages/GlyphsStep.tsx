@@ -6,8 +6,22 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { Badge, Button, Input, Spinner } from '../components/ui'
 
-import type { GlyphEntry } from '../types'
+import type { GlyphEntry, Project } from '../types'
 import { useProject } from './ProjectLayout'
+
+// The thumbnail URL has no font identity in its path, so the browser would
+// keep serving a cached SVG (from a previously selected font) for the same
+// glyph name. Tie the cache key to the font that actually renders it.
+function glyphSvgUrl(projectId: string, glyph: GlyphEntry, project?: Project): string {
+  const token =
+    glyph.font === 'base'
+      ? project?.base_font?.sha256
+      : glyph.font === 'pinyin'
+        ? project?.pinyin_font?.sha256
+        : project?.tasks.build.finished_at
+  const base = `/api/projects/${projectId}/glyphs/${encodeURIComponent(glyph.name)}/svg`
+  return token ? `${base}?v=${token.slice(0, 12)}` : base
+}
 
 const CATEGORIES = [
   { value: '', label: 'すべて' },
@@ -21,7 +35,7 @@ const COLUMNS = 8
 const PAGE_SIZE = 1000
 
 export default function GlyphsStep() {
-  const { projectId } = useProject()
+  const { project, projectId } = useProject()
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [category, setCategory] = useState('')
@@ -128,6 +142,7 @@ export default function GlyphsStep() {
                     key={glyph.name}
                     glyph={glyph}
                     projectId={projectId}
+                    project={project}
                     selected={selected?.name === glyph.name}
                     onClick={() => setSelected(glyph)}
                   />
@@ -159,6 +174,7 @@ export default function GlyphsStep() {
       {selected && (
         <GlyphDetailPanel
           projectId={projectId}
+          project={project}
           glyph={selected}
           onClose={() => setSelected(null)}
         />
@@ -170,11 +186,13 @@ export default function GlyphsStep() {
 function GlyphCell({
   glyph,
   projectId,
+  project,
   selected,
   onClick,
 }: {
   glyph: GlyphEntry
   projectId: string
+  project?: Project
   selected: boolean
   onClick: () => void
 }) {
@@ -186,7 +204,7 @@ function GlyphCell({
       }`}
     >
       <img
-        src={`/api/projects/${projectId}/glyphs/${encodeURIComponent(glyph.name)}/svg`}
+        src={glyphSvgUrl(projectId, glyph, project)}
         alt={glyph.name}
         loading="lazy"
         className="h-14 w-14 object-contain"
@@ -200,10 +218,12 @@ function GlyphCell({
 
 function GlyphDetailPanel({
   projectId,
+  project,
   glyph,
   onClose,
 }: {
   projectId: string
+  project?: Project
   glyph: GlyphEntry
   onClose: () => void
 }) {
@@ -224,7 +244,7 @@ function GlyphDetailPanel({
 
       <div className="mb-4 rounded-xl border border-line bg-surface p-6">
         <img
-          src={`/api/projects/${projectId}/glyphs/${encodeURIComponent(glyph.name)}/svg`}
+          src={glyphSvgUrl(projectId, glyph, project)}
           alt={glyph.name}
           className="mx-auto h-32 w-32 object-contain"
         />

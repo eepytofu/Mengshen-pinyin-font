@@ -53,13 +53,19 @@ def create_app() -> FastAPI:
             name="assets",
         )
 
-        # SPA fallback: any non-API path serves the frontend entry point
+        # SPA fallback: any non-API path serves the frontend entry point.
+        # index.html must never be cached, or the browser keeps loading a
+        # stale bundle after a rebuild (asset filenames are content-hashed,
+        # so only the HTML that references them needs revalidation).
         @app.get("/{path:path}", include_in_schema=False)
         async def spa_fallback(path: str) -> FileResponse:
             static_file = settings.FRONTEND_DIST / path
             if path and ".." not in path and static_file.is_file():
                 return FileResponse(static_file)
-            return FileResponse(settings.FRONTEND_DIST / "index.html")
+            return FileResponse(
+                settings.FRONTEND_DIST / "index.html",
+                headers={"Cache-Control": "no-cache"},
+            )
 
     return app
 
