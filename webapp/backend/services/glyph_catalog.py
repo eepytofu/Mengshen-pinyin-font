@@ -13,6 +13,8 @@ import threading
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from src.refactored.scripts.retrieve_latin_alphabet import ALPHABET
+
 from .. import settings
 from ..schemas import Project
 from .preview_composer import _FontOutlines
@@ -20,7 +22,12 @@ from .project_store import ProjectStore
 
 INDEX_FILENAME = "glyph_index.json"
 # Bump when index build logic changes so cached glyph_index.json regenerates
-_INDEX_VERSION = "v3"
+_INDEX_VERSION = "v5"
+
+# The 55 latin letters (plain + tone-marked) actually used to compose
+# pinyin. The pinyin category must stay within these — a full latin font
+# carries hundreds of other letters that are not pinyin.
+_PINYIN_ALPHABET = frozenset(ALPHABET)
 
 _index_lock = threading.Lock()
 _index_cache: Dict[str, tuple[str, List[dict]]] = {}
@@ -162,10 +169,17 @@ def _pronunciation_entries(project: Project) -> List[dict]:
         char = chr(codepoints[0])
         index = int(variant)
         readings = get_pronunciations(project, char)
+        homograph = len(readings) > 1
         if index == 0:
             reading = None
+            label = f"{char}（拼音なし）"
+            variant_label = "拼音なし"
         elif index <= len(readings):
             reading = readings[index - 1]
+            label = f"{char}［{reading}］"
+            variant_label = (
+                f"第{index}読み: {reading}" if homograph else f"読み: {reading}"
+            )
         else:
             continue  # stale variant beyond the current readings
         entries.append(
@@ -173,10 +187,12 @@ def _pronunciation_entries(project: Project) -> List[dict]:
                 "name": glyph_name,
                 "font": "output",
                 "char": char,
+                "label": label,
                 "codepoints": [f"U+{cp:04X}" for cp in codepoints],
                 "advance_width": outlines.advance_width(glyph_name),
                 "category": "pronunciation",
                 "variant": f"ss{variant}",
+                "variant_label": variant_label,
                 "reading": reading,
                 "overridden": char in project.glyph_overrides.readings,
             }
@@ -185,8 +201,12 @@ def _pronunciation_entries(project: Project) -> List[dict]:
 
 
 def _build_index(project: Project) -> List[dict]:
-    entries: List[dict] = []
-    seen: set[str] = set()
+    # Keyed by glyph name. Base and pinyin fonts often share latin glyph
+    # names ("a", "amacron", ...); the pinyin font must own the pinyin
+    # letters so they render in the pinyin typeface and are categorized
+    # as pinyin_alphabet rather than being shadowed by the base font.
+    by_name: Dict[str, dict] = {}
+    allowed = allowed_hanzi()
 
     for role, font_ref in (
         ("base", project.base_font),
@@ -199,11 +219,7 @@ def _build_index(project: Project) -> List[dict]:
         for codepoint, glyph_name in outlines.cmap.items():
             reverse_cmap.setdefault(glyph_name, []).append(codepoint)
 
-        allowed = allowed_hanzi()
         for glyph_name in outlines.font.getGlyphOrder():
-            if glyph_name in seen:
-                continue
-            seen.add(glyph_name)
             codepoints = sorted(reverse_cmap.get(glyph_name, []))
             char = chr(codepoints[0]) if codepoints else None
             category = _categorize(glyph_name, char)
@@ -211,22 +227,30 @@ def _build_index(project: Project) -> List[dict]:
             # (通用规范汉字表 / Big5 / 常用漢字表)
             if category == "hanzi" and not any(cp in allowed for cp in codepoints):
                 continue
-            if role == "pinyin" and category == "other" and char and char.isalpha():
+            # The pinyin category is exactly the 55 letters used for pinyin,
+            # not every latin/greek letter the font happens to carry
+            is_pinyin_letter = role == "pinyin" and char in _PINYIN_ALPHABET
+            if is_pinyin_letter and category == "other":
                 category = "pinyin_alphabet"
-            entries.append(
-                {
-                    "name": glyph_name,
-                    "font": role,
-                    "char": char,
-                    "codepoints": [f"U+{cp:04X}" for cp in codepoints],
-                    "advance_width": outlines.advance_width(glyph_name),
-                    "category": category,
-                    "overridden": bool(
-                        char and char in project.glyph_overrides.readings
-                    ),
-                }
-            )
 
+            existing = by_name.get(glyph_name)
+            if existing is not None:
+                # Only the pinyin font's own pinyin letters may override an
+                # already-seen (base-font) glyph of the same name
+                if not (is_pinyin_letter and existing["category"] != "pinyin_alphabet"):
+                    continue
+
+            by_name[glyph_name] = {
+                "name": glyph_name,
+                "font": role,
+                "char": char,
+                "codepoints": [f"U+{cp:04X}" for cp in codepoints],
+                "advance_width": outlines.advance_width(glyph_name),
+                "category": category,
+                "overridden": bool(char and char in project.glyph_overrides.readings),
+            }
+
+    entries = list(by_name.values())
     entries.extend(_pronunciation_entries(project))
     return entries
 

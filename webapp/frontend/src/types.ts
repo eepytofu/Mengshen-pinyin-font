@@ -88,7 +88,9 @@ export interface GlyphEntry {
   category: string
   overridden: boolean
   // Only on category 'pronunciation' (built-font .ssNN variants)
+  label?: string
   variant?: string
+  variant_label?: string
   reading?: string | null
 }
 

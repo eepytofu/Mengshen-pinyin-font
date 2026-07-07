@@ -192,9 +192,7 @@ function GlyphCell({
         className="h-14 w-14 object-contain"
       />
       <span className="mt-1 w-full truncate text-center text-[10px] text-slate-500">
-        {glyph.category === 'pronunciation'
-          ? `${glyph.char} ${glyph.reading ?? '拼音なし'}`
-          : (glyph.char ?? glyph.name)}
+        {glyph.label ?? glyph.char ?? glyph.name}
       </span>
     </button>
   )
@@ -233,18 +231,19 @@ function GlyphDetailPanel({
       </div>
 
       <dl className="space-y-3 text-sm">
-        <DetailRow label="グリフ名" value={glyph.name} mono />
-        {glyph.char && <DetailRow label="文字" value={glyph.char} />}
+        {glyph.category === 'pronunciation' ? (
+          <>
+            <DetailRow label="名称" value={glyph.label ?? glyph.name} />
+            <DetailRow label="読み" value={glyph.variant_label ?? ''} />
+          </>
+        ) : (
+          glyph.char && <DetailRow label="文字" value={glyph.char} />
+        )}
         {glyph.codepoints.length > 0 && (
           <DetailRow label="Unicode" value={glyph.codepoints.join(', ')} mono />
         )}
         <DetailRow label="advance width" value={String(glyph.advance_width)} mono />
-        {glyph.category === 'pronunciation' && (
-          <DetailRow
-            label="読みバリアント"
-            value={`${glyph.variant} — ${glyph.reading ?? '拼音なし'}`}
-          />
-        )}
+        <DetailRow label="グリフ名（内部）" value={glyph.name} mono />
         <div>
           <dt className="text-xs uppercase tracking-wide text-slate-500">カテゴリ</dt>
           <dd className="mt-1">
