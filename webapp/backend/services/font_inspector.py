@@ -127,12 +127,25 @@ def normalize_pinyin_font(path: Path, alphabet: list[str]) -> Path:
         font.close()
 
 
+def name_is_renderable(font: TTFont, text: str) -> bool:
+    """True if the font has a glyph for every character in `text`.
+
+    Pinyin alphabet fonts are lowercase-only latin subsets, so they can
+    render their own family name (uppercase letters, hyphens) only partly;
+    callers use this to avoid showing a name in a font that would fall
+    back mid-word.
+    """
+    cmap = font.getBestCmap()
+    return all(ord(ch) in cmap for ch in text)
+
+
 def inspect_font(path: Path, source: str, original_filename: str) -> FontRef:
     font = TTFont(str(path), lazy=True)
     try:
         family = _best_name(font, 1) or _best_name(font, 4) or path.stem
         upem = int(font["head"].unitsPerEm)
         glyph_count = len(font.getGlyphOrder())
+        name_renderable = name_is_renderable(font, family)
     finally:
         font.close()
 
@@ -144,4 +157,5 @@ def inspect_font(path: Path, source: str, original_filename: str) -> FontRef:
         family_name=family,
         units_per_em=upem,
         glyph_count=glyph_count,
+        name_renderable=name_renderable,
     )

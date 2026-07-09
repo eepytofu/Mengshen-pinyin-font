@@ -167,10 +167,15 @@ function BuiltinCard({
   onSelect: () => void
 }) {
   // Show the family name of the font actually used for this role,
-  // rendered in that font (base and pinyin differ within a preset)
+  // rendered in that font (base and pinyin differ within a preset).
+  // A pinyin subset font can't render its own name (no uppercase), so
+  // only style it in-font when the font actually covers the name.
   const family = useFontFace(`/api/builtin-fonts/${builtin.style}/${role}/file`)
-  const name =
-    (role === 'base' ? builtin.base_family : builtin.pinyin_family) ?? builtin.label
+  const familyName = role === 'base' ? builtin.base_family : builtin.pinyin_family
+  const nameRenderable =
+    role === 'base' ? builtin.base_name_renderable : builtin.pinyin_name_renderable
+  const name = familyName ?? builtin.label
+  const showInFont = Boolean(family) && nameRenderable
   return (
     <button
       onClick={onSelect}
@@ -181,7 +186,7 @@ function BuiltinCard({
       <div className="mb-1 flex items-center justify-between">
         <span
           className="text-sm font-medium text-slate-200"
-          style={family ? { fontFamily: family, fontSize: '1rem' } : undefined}
+          style={showInFont ? { fontFamily: family, fontSize: '1rem' } : undefined}
         >
           {name}
         </span>
@@ -205,12 +210,18 @@ function SelectedFontInfo({
   const family = useFontFace(
     `/api/projects/${projectId}/fonts/${role}/file?v=${current.sha256.slice(0, 12)}`,
   )
+  // Don't render the name in a font that can't render it (pinyin subsets)
+  const showInFont = Boolean(family) && current.name_renderable !== false
   return (
     <div className="mt-4 flex items-center gap-3 rounded-lg bg-surface px-4 py-3">
       <div className="flex-1">
         <p
           className="font-medium text-slate-200"
-          style={family ? { fontFamily: family, fontSize: '1.25rem' } : { fontSize: '0.875rem' }}
+          style={
+            showInFont
+              ? { fontFamily: family, fontSize: '1.25rem' }
+              : { fontSize: '0.875rem' }
+          }
         >
           {current.family_name}
         </p>

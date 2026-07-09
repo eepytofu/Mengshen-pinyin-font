@@ -42,6 +42,9 @@ class FontRef(BaseModel):
     family_name: str = ""
     units_per_em: int = 1000
     glyph_count: int = 0
+    # False when the font lacks glyphs for some characters of its own
+    # family name (e.g. lowercase-only pinyin subset fonts)
+    name_renderable: bool = True
 
 
 class LicenseEntry(BaseModel):

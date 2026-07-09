@@ -20,6 +20,7 @@ export interface FontRef {
   family_name: string
   units_per_em: number
   glyph_count: number
+  name_renderable?: boolean
 }
 
 export interface LicenseEntry {

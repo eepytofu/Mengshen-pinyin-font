@@ -17,10 +17,15 @@ from ..services.project_store import default_canvas
 
 
 @lru_cache(maxsize=8)
-def _family_name(path: str) -> Optional[str]:
+def _family_info(path: str) -> tuple[Optional[str], bool]:
+    """(family name, whether the font can render that whole name)."""
+    from ..services.font_inspector import name_is_renderable
+
     font = TTFont(path, lazy=True)
     try:
-        return font["name"].getDebugName(1) or font["name"].getDebugName(4)
+        name = font["name"].getDebugName(1) or font["name"].getDebugName(4)
+        renderable = bool(name) and name_is_renderable(font, name)
+        return name, renderable
     finally:
         font.close()
 
@@ -41,6 +46,8 @@ def health() -> dict:
 def builtin_fonts() -> dict:
     fonts = {}
     for style, info in BUILTIN_FONTS.items():
+        base_family, base_renderable = _family_info(str(info["base_path"]))
+        pinyin_family, pinyin_renderable = _family_info(str(info["pinyin_path"]))
         fonts[style] = {
             "style": style,
             "label": info["label"],
@@ -48,8 +55,12 @@ def builtin_fonts() -> dict:
             "pinyin_path": str(info["pinyin_path"]),
             # Actual family names per role (the pinyin font is a
             # different typeface than the preset's base font)
-            "base_family": _family_name(str(info["base_path"])),
-            "pinyin_family": _family_name(str(info["pinyin_path"])),
+            "base_family": base_family,
+            "pinyin_family": pinyin_family,
+            # Whether each font can render its own name (pinyin subsets
+            # often cannot — uppercase/punctuation missing)
+            "base_name_renderable": base_renderable,
+            "pinyin_name_renderable": pinyin_renderable,
             "default_canvas": default_canvas(style).model_dump(),
         }
     return {"fonts": fonts}
