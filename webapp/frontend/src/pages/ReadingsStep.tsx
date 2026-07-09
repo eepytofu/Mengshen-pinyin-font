@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { Badge, Button, Card, Input, Spinner } from '../components/ui'
-import { apiErrorMessage } from '../i18n/apiError'
+import { ApiError, displayError } from '../i18n/apiError'
 import type { PreviewResponse, ReadingOverride } from '../types'
 import { useProject } from './ProjectLayout'
 
@@ -18,7 +18,7 @@ async function fetchReading(projectId: string, char: string): Promise<ReadingSta
   const res = await fetch(
     `/api/projects/${projectId}/readings/${encodeURIComponent(char)}`,
   )
-  if (!res.ok) throw new Error(apiErrorMessage((await res.json()).detail, res.statusText))
+  if (!res.ok) throw new ApiError((await res.json()).detail, res.statusText)
   return res.json()
 }
 
@@ -30,7 +30,7 @@ export default function ReadingsStep() {
   const [char, setChar] = useState(params.get('char') ?? '')
   const [input, setInput] = useState(char)
   const [newReading, setNewReading] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState<unknown>(null)
 
   const reading = useQuery({
     queryKey: ['reading', projectId, char],
@@ -68,15 +68,15 @@ export default function ReadingsStep() {
           body: JSON.stringify({ mode: 'replace', pronunciations }),
         },
       )
-      if (!res.ok) throw new Error(apiErrorMessage((await res.json()).detail, res.statusText))
+      if (!res.ok) throw new ApiError((await res.json()).detail, res.statusText)
       return res.json()
     },
     onSuccess: () => {
-      setError('')
+      setError(null)
       setNewReading('')
       invalidate()
     },
-    onError: (e) => setError((e as Error).message),
+    onError: (e) => setError(e),
   })
 
   const reset = useMutation({
@@ -86,7 +86,7 @@ export default function ReadingsStep() {
       })
     },
     onSuccess: () => {
-      setError('')
+      setError(null)
       invalidate()
     },
   })
@@ -188,7 +188,9 @@ export default function ReadingsStep() {
                   </Button>
                 )}
               </div>
-              {error && <p className="text-sm text-rose-400">{error}</p>}
+              {error != null && (
+                <p className="text-sm text-rose-400">{displayError(error)}</p>
+              )}
             </div>
           </div>
         </Card>

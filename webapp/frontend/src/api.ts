@@ -1,4 +1,4 @@
-import { apiErrorMessage } from './i18n/apiError'
+import { ApiError } from './i18n/apiError'
 import type {
   Canvas,
   GlyphDetail,
@@ -20,7 +20,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     } catch {
       /* not json */
     }
-    throw new Error(apiErrorMessage(detail as never, res.statusText))
+    throw new ApiError(detail as never, res.statusText)
   }
   if (res.status === 204) return undefined as T
   return res.json()
@@ -53,7 +53,7 @@ export const api = {
     })
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
-      throw new Error(apiErrorMessage(body.detail, res.statusText))
+      throw new ApiError(body.detail, res.statusText)
     }
     return res.json() as Promise<Project>
   },

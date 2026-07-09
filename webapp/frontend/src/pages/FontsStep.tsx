@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { api, type BuiltinFont } from '../api'
 import { Badge, Button, Card } from '../components/ui'
+import { displayError } from '../i18n/apiError'
 import type { FontRef } from '../types'
 import { useFontFace } from '../useFontFace'
 import { useProject } from './ProjectLayout'
@@ -144,7 +145,7 @@ function FontPicker({
       </div>
 
       {upload.isError && (
-        <p className="mt-3 text-sm text-rose-400">{(upload.error as Error).message}</p>
+        <p className="mt-3 text-sm text-rose-400">{displayError(upload.error)}</p>
       )}
 
       {current && <SelectedFontInfo current={current} role={role} projectId={projectId} />}

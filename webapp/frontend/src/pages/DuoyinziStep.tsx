@@ -3,7 +3,7 @@ import { Search } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Input, Spinner } from '../components/ui'
-import { apiErrorMessage } from '../i18n/apiError'
+import { ApiError, displayError } from '../i18n/apiError'
 import { useProject } from './ProjectLayout'
 
 interface DuoyinziRow {
@@ -46,9 +46,7 @@ async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(
-      apiErrorMessage((body as { detail?: never }).detail, res.statusText),
-    )
+    throw new ApiError((body as { detail?: never }).detail, res.statusText)
   }
   return res.json()
 }
@@ -613,7 +611,7 @@ function GsubTab() {
     return (
       <div className="flex flex-1 items-center justify-center p-10 text-center">
         <div>
-          <p className="text-slate-300">{(overview.error as Error).message}</p>
+          <p className="text-slate-300">{displayError(overview.error)}</p>
           <p className="mt-2 text-sm text-slate-500">
             {t('duoyinzi.gsub.prepareRequired')}
           </p>
