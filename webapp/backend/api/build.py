@@ -3,10 +3,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
 from .. import settings
+from ..errors import problem
 from ..schemas import Project, TaskKind, TaskState
 from ..services import pipeline
 from .deps import get_project_or_404, store, tasks
@@ -19,25 +20,33 @@ def _require_acknowledgments(project: Project) -> None:
         info = project.license.get(role)
         font_ref = project.base_font if role == "base" else project.pinyin_font
         if font_ref is None:
-            raise HTTPException(status_code=409, detail=f"No {role} font selected")
+            raise problem(
+                409, "no_font_selected", f"No {role} font selected", role=role
+            )
         if info is None or not info.acknowledged:
-            raise HTTPException(
-                status_code=409,
-                detail=f"License for {role} font not acknowledged",
+            raise problem(
+                409,
+                "license_not_acknowledged",
+                f"License for {role} font not acknowledged",
+                role=role,
             )
         if info.font_sha256 != font_ref.sha256:
-            raise HTTPException(
-                status_code=409,
-                detail=f"License acknowledgment for {role} font is stale",
+            raise problem(
+                409,
+                "license_stale",
+                f"License acknowledgment for {role} font is stale",
+                role=role,
             )
 
 
 def _require_tools() -> None:
     missing = settings.missing_tools()
     if missing:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Required tools missing from PATH: {missing}",
+        raise problem(
+            503,
+            "tools_missing",
+            f"Required tools missing from PATH: {missing}",
+            tools=", ".join(missing),
         )
 
 
@@ -47,7 +56,7 @@ def start_prepare(project_id: str) -> TaskState:
     _require_acknowledgments(project)
     _require_tools()
     if project.tasks["prepare"].status == "running":
-        raise HTTPException(status_code=409, detail="Prepare already running")
+        raise problem(409, "prepare_running", "Prepare already running")
 
     # Regenerating templates makes any previously built TTF stale
     if project.tasks["build"].status != "idle":
@@ -70,9 +79,9 @@ def start_build(project_id: str) -> TaskState:
     _require_acknowledgments(project)
     _require_tools()
     if project.tasks["prepare"].status != "done":
-        raise HTTPException(status_code=409, detail="Prepare has not completed")
+        raise problem(409, "prepare_incomplete", "Prepare has not completed")
     if project.tasks["build"].status == "running":
-        raise HTTPException(status_code=409, detail="Build already running")
+        raise problem(409, "build_running", "Build already running")
 
     def job(current: Project, on_progress) -> None:
         pinyin_manager = None
@@ -110,12 +119,14 @@ def download(project_id: str) -> FileResponse:
     # A leftover TTF from before a font/canvas/readings change must not be
     # served — only a build of the current settings counts
     if project.tasks["build"].status != "done":
-        raise HTTPException(
-            status_code=409, detail="Font has not been built for the current settings"
+        raise problem(
+            409,
+            "build_not_current",
+            "Font has not been built for the current settings",
         )
     output_path = pipeline.output_path_for(project)
     if not output_path.exists():
-        raise HTTPException(status_code=404, detail="Font has not been built yet")
+        raise problem(404, "build_missing", "Font has not been built yet")
     return FileResponse(
         output_path,
         media_type="font/ttf",

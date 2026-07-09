@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from fontTools.ttLib import TTFont
 
+from ..errors import FontValidationError
 from ..schemas import FontRef, LicenseEntry
 
 # nameID semantics follow src/refactored/config/font_name_tables.py
@@ -59,20 +60,22 @@ def read_license_entries(path: Path) -> List[LicenseEntry]:
 
 
 def validate_font_file(path: Path) -> None:
-    """Raise ValueError when the file is not a usable TTF/OTF."""
+    """Raise FontValidationError when the file is not a usable TTF/OTF."""
     try:
         font = TTFont(str(path), lazy=True)
     except Exception as e:  # noqa: BLE001 - fonttools raises many types
-        raise ValueError(f"Not a valid font file: {e}") from e
+        raise FontValidationError("invalid_font", f"Not a valid font file: {e}") from e
     try:
         glyph_count = len(font.getGlyphOrder())
         if glyph_count >= 60000:
-            raise ValueError(
+            raise FontValidationError(
+                "glyph_count_exceeded",
                 f"Font has {glyph_count} glyphs — too close to the 65,536 "
-                "limit to add pinyin glyphs"
+                "limit to add pinyin glyphs",
+                count=glyph_count,
             )
         if "cmap" not in font or font.getBestCmap() is None:
-            raise ValueError("Font has no usable Unicode cmap")
+            raise FontValidationError("no_cmap", "Font has no usable Unicode cmap")
     finally:
         font.close()
 

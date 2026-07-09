@@ -110,14 +110,17 @@ def search_duoyinzi(query: str = "", page: int = 1, size: int = 50) -> dict:
             if q == r["char"]
             or any(q in reading for reading in r["readings"])
             or any(
-                q in phrase
-                for entry in r["pattern_one"]
-                for phrase in entry["phrases"]
+                q in phrase for entry in r["pattern_one"] for phrase in entry["phrases"]
             )
         ]
     total = len(rows)
     start = max(page - 1, 0) * size
-    return {"total": total, "page": page, "size": size, "items": rows[start : start + size]}
+    return {
+        "total": total,
+        "page": page,
+        "size": size,
+        "items": rows[start : start + size],
+    }
 
 
 def find_duoyinzi(char: str) -> Optional[dict]:

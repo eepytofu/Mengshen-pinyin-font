@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { GripVertical, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { Badge, Button, Card, Input, Spinner } from '../components/ui'
+import { apiErrorMessage } from '../i18n/apiError'
 import type { PreviewResponse, ReadingOverride } from '../types'
 import { useProject } from './ProjectLayout'
 
@@ -16,12 +18,13 @@ async function fetchReading(projectId: string, char: string): Promise<ReadingSta
   const res = await fetch(
     `/api/projects/${projectId}/readings/${encodeURIComponent(char)}`,
   )
-  if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText)
+  if (!res.ok) throw new Error(apiErrorMessage((await res.json()).detail, res.statusText))
   return res.json()
 }
 
 export default function ReadingsStep() {
   const { project, projectId } = useProject()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [params] = useSearchParams()
   const [char, setChar] = useState(params.get('char') ?? '')
@@ -65,7 +68,7 @@ export default function ReadingsStep() {
           body: JSON.stringify({ mode: 'replace', pronunciations }),
         },
       )
-      if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText)
+      if (!res.ok) throw new Error(apiErrorMessage((await res.json()).detail, res.statusText))
       return res.json()
     },
     onSuccess: () => {
@@ -103,14 +106,11 @@ export default function ReadingsStep() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-8 py-8">
       <header>
-        <h2 className="text-lg font-bold text-slate-100">読み（拼音）の追加・変更</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          読みはドラッグで並べ替え、ゴミ箱で削除できます。先頭（★）がデフォルト表示になり、
-          2番目以降は多音字パターンや IVS で切り替えられます。変更は次回ビルドから反映されます。
-        </p>
+        <h2 className="text-lg font-bold text-slate-100">{t('readings.title')}</h2>
+        <p className="mt-1 text-sm text-slate-500">{t('readings.subtitle')}</p>
       </header>
 
-      <Card title="文字を選択">
+      <Card title={t('readings.selectChar')}>
         <div className="flex gap-3">
           <Input
             className="max-w-[8rem] text-center text-2xl"
@@ -120,19 +120,19 @@ export default function ReadingsStep() {
             onChange={(e) => setInput(e.target.value)}
           />
           <Button onClick={() => setChar(input)} disabled={input.length !== 1}>
-            表示
+            {t('readings.show')}
           </Button>
         </div>
       </Card>
 
       {char && reading.data && (
         <Card
-          title={`「${char}」の読み`}
+          title={t('readings.readingOf', { char })}
           actions={
             reading.data.override ? (
-              <Badge tone="accent">変更あり</Badge>
+              <Badge tone="accent">{t('readings.changed')}</Badge>
             ) : (
-              <Badge>ベースデータ</Badge>
+              <Badge>{t('readings.baseData')}</Badge>
             )
           }
         >
@@ -155,6 +155,7 @@ export default function ReadingsStep() {
                 readings={reading.data.readings}
                 onChange={(next) => saveList.mutate(next)}
                 busy={saveList.isPending}
+                t={t}
               />
 
               <div className="flex gap-2 border-t border-line pt-4">
@@ -176,13 +177,13 @@ export default function ReadingsStep() {
                   }
                 >
                   <span className="flex items-center gap-1">
-                    <Plus className="h-4 w-4" /> 追加
+                    <Plus className="h-4 w-4" /> {t('common.add')}
                   </span>
                 </Button>
                 {reading.data.override && (
                   <Button variant="ghost" onClick={() => reset.mutate()}>
                     <span className="flex items-center gap-1">
-                      <RotateCcw className="h-4 w-4" /> ベースに戻す
+                      <RotateCcw className="h-4 w-4" /> {t('readings.resetToBase')}
                     </span>
                   </Button>
                 )}
@@ -194,7 +195,7 @@ export default function ReadingsStep() {
       )}
 
       {overrides.length > 0 && (
-        <Card title={`変更した文字 (${overrides.length})`}>
+        <Card title={t('readings.changedChars', { count: overrides.length })}>
           <ul className="divide-y divide-line">
             {overrides.map(([overrideChar, override]) => (
               <li key={overrideChar} className="flex items-center gap-3 py-2">
@@ -212,7 +213,7 @@ export default function ReadingsStep() {
                 </span>
                 <button
                   className="text-slate-600 hover:text-rose-400"
-                  title="変更を破棄してベースに戻す"
+                  title={t('readings.discardTitle')}
                   onClick={async () => {
                     await fetch(
                       `/api/projects/${projectId}/readings/${encodeURIComponent(overrideChar)}`,
@@ -240,10 +241,12 @@ function ReadingList({
   readings,
   onChange,
   busy,
+  t,
 }: {
   readings: string[]
   onChange: (next: string[]) => void
   busy: boolean
+  t: (key: string, opts?: Record<string, unknown>) => string
 }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)
@@ -263,7 +266,7 @@ function ReadingList({
   }
 
   if (readings.length === 0) {
-    return <p className="text-sm text-slate-500">読みが登録されていません。追加してください。</p>
+    return <p className="text-sm text-slate-500">{t('readings.empty')}</p>
   }
 
   return (
@@ -291,13 +294,17 @@ function ReadingList({
           <GripVertical className="h-4 w-4 shrink-0 text-slate-600" />
           <span className="flex-1 text-sm text-slate-200">{reading}</span>
           {index === 0 ? (
-            <Badge tone="success">★ デフォルト</Badge>
+            <Badge tone="success">{t('readings.default')}</Badge>
           ) : (
             <Badge>ss0{index + 1}</Badge>
           )}
           <button
             className="text-slate-600 hover:text-rose-400 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-slate-600"
-            title={readings.length === 1 ? '最後の読みは削除できません' : 'この読みを削除'}
+            title={
+              readings.length === 1
+                ? t('readings.lastCannotDelete')
+                : t('readings.deleteThis')
+            }
             disabled={readings.length === 1}
             onClick={() => onChange(readings.filter((_, i) => i !== index))}
           >

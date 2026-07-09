@@ -9,20 +9,22 @@ import {
   ScrollText,
   SlidersHorizontal,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
+import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { Spinner } from '../components/ui'
 import type { Project } from '../types'
 
 const STEPS = [
-  { path: 'fonts', label: 'フォント', icon: FileText },
-  { path: 'license', label: 'ライセンス', icon: ScrollText },
-  { path: 'adjust', label: '位置調整', icon: SlidersHorizontal },
-  { path: 'glyphs', label: 'グリフ', icon: Grid3X3 },
-  { path: 'duoyinzi', label: '多音字 / GSUB', icon: BookOpenText },
-  { path: 'readings', label: '読みの編集', icon: Pencil },
-  { path: 'build', label: 'ビルド', icon: Package },
-]
+  { path: 'fonts', icon: FileText },
+  { path: 'license', icon: ScrollText },
+  { path: 'adjust', icon: SlidersHorizontal },
+  { path: 'glyphs', icon: Grid3X3 },
+  { path: 'duoyinzi', icon: BookOpenText },
+  { path: 'readings', icon: Pencil },
+  { path: 'build', icon: Package },
+] as const
 
 export function useProject(): { project: Project | undefined; projectId: string } {
   const { projectId = '' } = useParams()
@@ -36,6 +38,7 @@ export function useProject(): { project: Project | undefined; projectId: string 
 
 export default function ProjectLayout() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { project, projectId } = useProject()
 
   if (!project) {
@@ -53,16 +56,16 @@ export default function ProjectLayout() {
           className="flex items-center gap-2 border-b border-line px-5 py-4 text-left text-sm text-slate-400 hover:text-slate-200"
           onClick={() => navigate('/')}
         >
-          <ArrowLeft className="h-4 w-4" /> プロジェクト一覧
+          <ArrowLeft className="h-4 w-4" /> {t('nav.projectList')}
         </button>
         <div className="border-b border-line px-5 py-4">
           <p className="truncate font-semibold text-slate-100">{project.name}</p>
           <p className="mt-0.5 truncate text-xs text-slate-500">
-            {project.base_font?.family_name ?? '未設定'}
+            {project.base_font?.family_name ?? t('nav.unset')}
           </p>
         </div>
         <nav className="flex-1 space-y-1 p-3">
-          {STEPS.map(({ path, label, icon: Icon }) => (
+          {STEPS.map(({ path, icon: Icon }) => (
             <NavLink
               key={path}
               to={`/projects/${projectId}/${path}`}
@@ -74,10 +77,13 @@ export default function ProjectLayout() {
                 }`
               }
             >
-              <Icon className="h-4 w-4" /> {label}
+              <Icon className="h-4 w-4" /> {t(`nav.steps.${path}`)}
             </NavLink>
           ))}
         </nav>
+        <div className="border-t border-line px-5 py-3">
+          <LanguageSwitcher />
+        </div>
         <TaskIndicator project={project} />
       </aside>
       <main className="flex-1 overflow-y-auto">
@@ -88,11 +94,12 @@ export default function ProjectLayout() {
 }
 
 function TaskIndicator({ project }: { project: Project }) {
+  const { t } = useTranslation()
   const running =
     project.tasks.prepare.status === 'running'
-      ? 'テンプレート準備中…'
+      ? t('nav.preparingTemplate')
       : project.tasks.build.status === 'running'
-        ? 'フォントビルド中…'
+        ? t('nav.buildingFont')
         : null
   if (!running) return null
   return (

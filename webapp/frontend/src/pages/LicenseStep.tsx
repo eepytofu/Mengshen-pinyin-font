@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ExternalLink, ShieldCheck } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { Badge, Button, Card } from '../components/ui'
@@ -9,6 +10,7 @@ import { useProject } from './ProjectLayout'
 export default function LicenseStep() {
   const { project, projectId } = useProject()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const acknowledge = useMutation({
@@ -30,29 +32,27 @@ export default function LicenseStep() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-8 py-8">
       <header>
-        <h2 className="text-lg font-bold text-slate-100">ライセンス確認</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          選択したフォントの name テーブルからライセンス情報を表示しています。
-          派生フォントの作成・再配布が許可されているか確認してください
-          （Reserved Font Name の扱いに注意）。
-        </p>
+        <h2 className="text-lg font-bold text-slate-100">{t('license.title')}</h2>
+        <p className="mt-1 text-sm text-slate-500">{t('license.subtitle')}</p>
       </header>
 
       <LicensePanel
-        title={`ベースフォント: ${project.base_font?.family_name ?? '未選択'}`}
+        title={t('license.baseFont', {
+          name: project.base_font?.family_name ?? t('nav.unset'),
+        })}
         info={project.license.base}
         onAcknowledge={(value) => acknowledge.mutate({ role: 'base', value })}
       />
       <LicensePanel
-        title={`拼音フォント: ${project.pinyin_font?.family_name ?? '未選択'}`}
+        title={t('license.pinyinFont', {
+          name: project.pinyin_font?.family_name ?? t('nav.unset'),
+        })}
         info={project.license.pinyin}
         onAcknowledge={(value) => acknowledge.mutate({ role: 'pinyin', value })}
       />
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500">
-          続行するとバックグラウンドでテンプレート準備（otfccdump）を開始します。
-        </p>
+        <p className="text-xs text-slate-500">{t('license.prepareNote')}</p>
         <Button
           disabled={!allAcknowledged}
           onClick={async () => {
@@ -62,7 +62,7 @@ export default function LicenseStep() {
             navigate(`/projects/${projectId}/adjust`)
           }}
         >
-          承認して次へ: 位置調整
+          {t('license.acknowledgeNext')}
         </Button>
       </div>
     </div>
@@ -78,13 +78,18 @@ function LicensePanel({
   info: LicenseInfo
   onAcknowledge: (value: boolean) => void
 }) {
+  const { t } = useTranslation()
   const licenseUrl = info.entries.find((e) => e.name_id === 14)?.value
 
   return (
     <Card
       title={title}
       actions={
-        info.acknowledged ? <Badge tone="success">承認済み</Badge> : <Badge tone="warning">未承認</Badge>
+        info.acknowledged ? (
+          <Badge tone="success">{t('license.acknowledged')}</Badge>
+        ) : (
+          <Badge tone="warning">{t('license.notAcknowledged')}</Badge>
+        )
       }
     >
       <dl className="space-y-3">
@@ -101,9 +106,7 @@ function LicensePanel({
             </div>
           ))}
         {info.entries.length === 0 && (
-          <p className="text-sm text-slate-500">
-            name テーブルにライセンス情報がありません。フォントの配布元で利用条件を確認してください。
-          </p>
+          <p className="text-sm text-slate-500">{t('license.noLicenseInfo')}</p>
         )}
       </dl>
 
@@ -115,7 +118,7 @@ function LicensePanel({
             rel="noreferrer"
             className="flex items-center gap-1 text-sm text-accent-hover hover:underline"
           >
-            ライセンス全文 <ExternalLink className="h-3.5 w-3.5" />
+            {t('license.fullText')} <ExternalLink className="h-3.5 w-3.5" />
           </a>
         ) : (
           <span />
@@ -128,7 +131,7 @@ function LicensePanel({
             className="h-4 w-4 accent-indigo-500"
           />
           <ShieldCheck className="h-4 w-4 text-slate-500" />
-          ライセンス条件を確認し、派生フォントの作成に同意します
+          {t('license.agree')}
         </label>
       </div>
     </Card>

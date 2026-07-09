@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Upload } from 'lucide-react'
 import { useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { api, type BuiltinFont } from '../api'
 import { Badge, Button, Card } from '../components/ui'
@@ -11,6 +12,7 @@ import { useProject } from './ProjectLayout'
 export default function FontsStep() {
   const { project, projectId } = useProject()
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   const { data: builtins } = useQuery({
     queryKey: ['builtin-fonts'],
@@ -23,15 +25,13 @@ export default function FontsStep() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-8 py-8">
       <header>
-        <h2 className="text-lg font-bold text-slate-100">フォント選択</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          漢字のベースフォントと、拼音表示に使う英字フォントを選びます。
-        </p>
+        <h2 className="text-lg font-bold text-slate-100">{t('fonts.title')}</h2>
+        <p className="mt-1 text-sm text-slate-500">{t('fonts.subtitle')}</p>
       </header>
 
       <FontPicker
         role="base"
-        title="ベースフォント（漢字）"
+        title={t('fonts.baseTitle')}
         current={project.base_font}
         builtins={builtins?.fonts}
         projectId={projectId}
@@ -42,7 +42,7 @@ export default function FontsStep() {
       />
       <FontPicker
         role="pinyin"
-        title="拼音フォント（英字）"
+        title={t('fonts.pinyinTitle')}
         current={project.pinyin_font}
         builtins={builtins?.fonts}
         projectId={projectId}
@@ -57,7 +57,7 @@ export default function FontsStep() {
           disabled={!bothSelected}
           onClick={() => navigate(`/projects/${projectId}/license`)}
         >
-          次へ: ライセンス確認
+          {t('fonts.next')}
         </Button>
       </div>
     </div>
@@ -79,6 +79,7 @@ function FontPicker({
   projectId: string
   confirmNeeded: boolean
 }) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -88,11 +89,7 @@ function FontPicker({
   // Changing an already-acknowledged/prepared font resets the license
   // acknowledgment and templates — don't let a stray click do that
   const confirmChange = (nextLabel: string) =>
-    !confirmNeeded ||
-    confirm(
-      `フォントを「${nextLabel}」に変更すると、ライセンス承認と` +
-        '準備済みテンプレートがリセットされます。変更しますか？',
-    )
+    !confirmNeeded || confirm(t('fonts.changeConfirm', { name: nextLabel }))
 
   const selectBuiltin = useMutation({
     mutationFn: (style: string) => api.selectBuiltin(projectId, role, style),
@@ -132,7 +129,7 @@ function FontPicker({
           }`}
         >
           <Upload className="h-5 w-5 text-slate-500" />
-          <span className="text-xs text-slate-400">TTF/OTF をアップロード</span>
+          <span className="text-xs text-slate-400">{t('fonts.upload')}</span>
           <input
             ref={fileInput}
             type="file"
@@ -166,6 +163,7 @@ function BuiltinCard({
   selected: boolean
   onSelect: () => void
 }) {
+  const { t } = useTranslation()
   // Show the family name of the font actually used for this role,
   // rendered in that font (base and pinyin differ within a preset).
   // A pinyin subset font can't render its own name (no uppercase), so
@@ -192,7 +190,9 @@ function BuiltinCard({
         </span>
         {selected && <Check className="h-4 w-4 shrink-0 text-accent-hover" />}
       </div>
-      <span className="text-xs text-slate-500">同梱プリセット ・ {builtin.label}</span>
+      <span className="text-xs text-slate-500">
+        {t('fonts.presetTag', { label: builtin.label })}
+      </span>
     </button>
   )
 }
@@ -206,6 +206,7 @@ function SelectedFontInfo({
   role: 'base' | 'pinyin'
   projectId: string
 }) {
+  const { t } = useTranslation()
   // sha256 busts the browser cache when the same path gets a new upload
   const family = useFontFace(
     `/api/projects/${projectId}/fonts/${role}/file?v=${current.sha256.slice(0, 12)}`,
@@ -226,12 +227,15 @@ function SelectedFontInfo({
           {current.family_name}
         </p>
         <p className="text-xs text-slate-500">
-          {current.original_filename} ・ {current.glyph_count.toLocaleString()} グリフ ・
-          upem {current.units_per_em}
+          {t('fonts.detail', {
+            filename: current.original_filename,
+            count: current.glyph_count.toLocaleString(),
+            upem: current.units_per_em,
+          })}
         </p>
       </div>
       <Badge tone={current.source === 'upload' ? 'accent' : 'default'}>
-        {current.source === 'upload' ? 'アップロード' : 'プリセット'}
+        {current.source === 'upload' ? t('fonts.uploaded') : t('fonts.preset')}
       </Badge>
     </div>
   )

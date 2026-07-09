@@ -3,10 +3,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from src.refactored.utils.pinyin_utils import simplification_pronunciation
 
+from ..errors import problem
 from ..schemas import Project, ReadingOverride
 from ..services.preview_composer import get_base_pronunciations, get_pronunciations
 from .deps import get_project_or_404, store
@@ -17,16 +18,16 @@ router = APIRouter(prefix="/api/projects/{project_id}", tags=["readings"])
 
 def _validate_pronunciations(pronunciations: list[str]) -> None:
     if not pronunciations:
-        raise HTTPException(status_code=422, detail="At least one reading required")
+        raise problem(422, "reading_required", "At least one reading required")
     for pronunciation in pronunciations:
         simplified = simplification_pronunciation(pronunciation)
         if not simplified.replace("5", "").isascii():
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"Invalid pinyin syllable: {pronunciation} — "
-                    "use tone-marked letters like zhōng"
-                ),
+            raise problem(
+                422,
+                "invalid_syllable",
+                f"Invalid pinyin syllable: {pronunciation} — "
+                "use tone-marked letters like zhōng",
+                value=pronunciation,
             )
 
 
@@ -42,7 +43,7 @@ def _effective(project: Project, char: str) -> dict:
 def get_reading(project_id: str, char: str) -> dict:
     project = get_project_or_404(project_id)
     if len(char) != 1:
-        raise HTTPException(status_code=422, detail="Specify exactly one character")
+        raise problem(422, "one_char_required", "Specify exactly one character")
     return _effective(project, char)
 
 
@@ -50,7 +51,7 @@ def get_reading(project_id: str, char: str) -> dict:
 def set_reading(project_id: str, char: str, body: ReadingOverride) -> dict:
     project = get_project_or_404(project_id)
     if len(char) != 1:
-        raise HTTPException(status_code=422, detail="Specify exactly one character")
+        raise problem(422, "one_char_required", "Specify exactly one character")
     _validate_pronunciations(body.pronunciations)
 
     before = project.glyph_overrides.readings.get(char)
@@ -69,7 +70,7 @@ def set_reading(project_id: str, char: str, body: ReadingOverride) -> dict:
 def delete_reading(project_id: str, char: str) -> dict:
     project = get_project_or_404(project_id)
     if char not in project.glyph_overrides.readings:
-        raise HTTPException(status_code=404, detail=f"No override for: {char}")
+        raise problem(404, "no_override", f"No override for: {char}", char=char)
     del project.glyph_overrides.readings[char]
     invalidate_build(project)
     store.save(project)

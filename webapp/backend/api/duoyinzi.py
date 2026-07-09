@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
+from ..errors import problem
 from ..services import duoyinzi_catalog, glyph_catalog
 from .deps import get_project_or_404, store
 
@@ -37,7 +38,7 @@ def gsub_overview(project_id: str) -> dict:
     try:
         table = duoyinzi_catalog.get_gsub(project)
     except FileNotFoundError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise problem(409, "prepare_incomplete", str(e))
     return duoyinzi_catalog.gsub_overview(table)
 
 
@@ -75,6 +76,6 @@ def gsub_lookup_rules(
         }
         return result
     except FileNotFoundError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise problem(409, "prepare_incomplete", str(e))
     except KeyError as e:
         raise HTTPException(status_code=404, detail=str(e))

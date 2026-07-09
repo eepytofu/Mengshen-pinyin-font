@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Badge, Button, Input, Spinner } from '../components/ui'
+import { apiErrorMessage } from '../i18n/apiError'
 import { useProject } from './ProjectLayout'
 
 interface DuoyinziRow {
@@ -44,24 +46,21 @@ async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error((body as { detail?: string }).detail ?? res.statusText)
+    throw new Error(
+      apiErrorMessage((body as { detail?: never }).detail, res.statusText),
+    )
   }
   return res.json()
 }
 
 export default function DuoyinziStep() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<'duoyinzi' | 'gsub' | 'ivs'>('duoyinzi')
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-line px-6 py-3">
-        {(
-          [
-            ['duoyinzi', '多音字パターン'],
-            ['gsub', 'GSUB (rclt) テーブル'],
-            ['ivs', 'IVS 一覧'],
-          ] as const
-        ).map(([value, label]) => (
+        {(['duoyinzi', 'gsub', 'ivs'] as const).map((value) => (
           <button
             key={value}
             onClick={() => setTab(value)}
@@ -71,7 +70,7 @@ export default function DuoyinziStep() {
                 : 'text-slate-400 hover:bg-surface-overlay'
             }`}
           >
-            {label}
+            {t(`duoyinzi.tab.${value}`)}
           </button>
         ))}
       </div>
@@ -94,6 +93,7 @@ interface IvsRow {
 
 function IvsTab() {
   const { projectId } = useProject()
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
   const [homographsOnly, setHomographsOnly] = useState(true)
@@ -118,7 +118,7 @@ function IvsTab() {
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
           <Input
             className="pl-9"
-            placeholder="文字・拼音・U+E01Ex で検索"
+            placeholder={t('duoyinzi.ivs.searchPlaceholder')}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
@@ -140,27 +140,28 @@ function IvsTab() {
               setPage(1)
             }}
           />
-          多音字のみ
+          {t('duoyinzi.ivs.homographsOnly')}
         </label>
         <span className="ml-auto text-xs text-slate-500">
-          {data.data && `${data.data.total.toLocaleString()} 字に IVS を割り当て`}
+          {data.data &&
+            t('duoyinzi.ivs.assignedCount', {
+              count: data.data.total.toLocaleString(),
+            })}
         </span>
         {data.isFetching && <Spinner />}
       </div>
 
       <p className="mb-3 text-xs leading-relaxed text-slate-600">
-        ビルドされるフォントの cmap_uvs（使用想定の IVS）です。文字 + セレクタで
-        読みを強制できます: U+E01E0 = 拼音なし、U+E01E1 = デフォルトの読み
-        （GSUB の文脈置換を無効化して強制）、U+E01E2 以降 = 異読。
+        {t('duoyinzi.ivs.note')}
       </p>
 
       <div className="overflow-hidden rounded-xl border border-line">
         <table className="w-full text-sm">
           <thead className="bg-surface-raised text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-3">文字</th>
-              <th className="px-4 py-3">グリフ</th>
-              <th className="px-4 py-3">IVS シーケンス</th>
+              <th className="px-4 py-3">{t('duoyinzi.ivs.colChar')}</th>
+              <th className="px-4 py-3">{t('duoyinzi.ivs.colGlyph')}</th>
+              <th className="px-4 py-3">{t('duoyinzi.ivs.colSequence')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -186,7 +187,7 @@ function IvsTab() {
                         {seq.reading ? (
                           <Badge tone="success">{seq.reading}</Badge>
                         ) : (
-                          <Badge>拼音なし</Badge>
+                          <Badge>{t('duoyinzi.noPinyin')}</Badge>
                         )}
                       </span>
                     ))}
@@ -201,7 +202,7 @@ function IvsTab() {
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-center gap-4 text-sm">
           <Button variant="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            前へ
+            {t('common.prev')}
           </Button>
           <span className="text-slate-500">
             {page} / {totalPages}
@@ -211,7 +212,7 @@ function IvsTab() {
             disabled={page >= totalPages}
             onClick={() => setPage(page + 1)}
           >
-            次へ
+            {t('common.next')}
           </Button>
         </div>
       )}
@@ -221,6 +222,7 @@ function IvsTab() {
 
 function DuoyinziTab() {
   const { projectId } = useProject()
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
   const [page, setPage] = useState(1)
@@ -246,7 +248,7 @@ function DuoyinziTab() {
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
           <Input
             className="pl-9"
-            placeholder="文字・拼音・フレーズで検索"
+            placeholder={t('duoyinzi.list.searchPlaceholder')}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
@@ -259,7 +261,9 @@ function DuoyinziTab() {
           />
         </div>
         <span className="text-xs text-slate-500">
-          {data.data ? `${data.data.total} 字の多音字に対応` : ''}
+          {data.data
+            ? t('duoyinzi.list.supportedCount', { count: data.data.total })
+            : ''}
         </span>
         {data.isFetching && <Spinner />}
       </div>
@@ -268,10 +272,10 @@ function DuoyinziTab() {
         <table className="w-full text-sm">
           <thead className="bg-surface-raised text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-3">文字</th>
-              <th className="px-4 py-3">読み</th>
-              <th className="px-4 py-3">パターン（読みごとのフレーズ）</th>
-              <th className="px-4 py-3">熟語・例外</th>
+              <th className="px-4 py-3">{t('duoyinzi.list.colChar')}</th>
+              <th className="px-4 py-3">{t('duoyinzi.list.colReading')}</th>
+              <th className="px-4 py-3">{t('duoyinzi.list.colPattern')}</th>
+              <th className="px-4 py-3">{t('duoyinzi.list.colPhrases')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -302,7 +306,10 @@ function DuoyinziTab() {
                         <span className="mr-2 font-medium text-accent-hover">{p.pinyin}</span>
                         <span className="text-slate-400">
                           {p.phrases.slice(0, 6).join('、')}
-                          {p.phrases.length > 6 && ` …他${p.phrases.length - 6}件`}
+                          {p.phrases.length > 6 &&
+                            t('duoyinzi.list.moreCount', {
+                              count: p.phrases.length - 6,
+                            })}
                         </span>
                       </div>
                     ))}
@@ -325,7 +332,7 @@ function DuoyinziTab() {
         {totalPages > 1 && (
           <div className="mt-4 flex items-center justify-center gap-4 text-sm">
             <Button variant="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              前へ
+            {t('common.prev')}
             </Button>
             <span className="text-slate-500">
               {page} / {totalPages}
@@ -335,7 +342,7 @@ function DuoyinziTab() {
               disabled={page >= totalPages}
               onClick={() => setPage(page + 1)}
             >
-              次へ
+              {t('common.next')}
             </Button>
           </div>
         )}
@@ -368,6 +375,7 @@ function PatternGraphPanel({
   char: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const detail = useQuery({
     queryKey: ['duoyinzi-detail', projectId, char],
     queryFn: () =>
@@ -379,7 +387,9 @@ function PatternGraphPanel({
   return (
     <aside className="w-[26rem] shrink-0 overflow-y-auto border-l border-line bg-surface-raised p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-100">パターンの関係</h3>
+        <h3 className="text-sm font-semibold text-slate-100">
+          {t('duoyinzi.pattern.title')}
+        </h3>
         <button onClick={onClose} className="text-slate-500 hover:text-slate-300">
           ✕
         </button>
@@ -395,14 +405,14 @@ function PatternGraphPanel({
 
           {detail.data.pattern_two_detail.length > 0 && (
             <PhrasePatternList
-              title="熟語パターン (rclt_1)"
+              title={t('duoyinzi.pattern.patternTwo')}
               patterns={detail.data.pattern_two_detail}
               focusChar={char}
             />
           )}
           {detail.data.exceptional_detail.length > 0 && (
             <PhrasePatternList
-              title="例外パターン (rclt_2)"
+              title={t('duoyinzi.pattern.exceptional')}
               patterns={detail.data.exceptional_detail}
               focusChar={char}
             />
@@ -418,6 +428,7 @@ function PatternGraphPanel({
  * Reading #1 is the default; others are applied by rclt context rules.
  */
 function ReadingTree({ detail }: { detail: DuoyinziDetail }) {
+  const { t } = useTranslation()
   const phrasesByPinyin = new Map(
     detail.pattern_one.map((p) => [p.pinyin, p] as const),
   )
@@ -442,11 +453,16 @@ function ReadingTree({ detail }: { detail: DuoyinziDetail }) {
                   {reading}
                 </span>
                 <span className="text-[10px] uppercase tracking-wide text-slate-600">
-                  {index === 0 ? 'デフォルト' : `ss0${index + 1} / 文脈で切替`}
+                  {index === 0
+                    ? t('duoyinzi.tree.default')
+                    : t('duoyinzi.tree.ssContext', { n: index + 1 })}
                 </span>
                 <span
                   className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-slate-500"
-                  title={`IVS: ${detail.char} + U+${(0xe01e1 + index).toString(16).toUpperCase()} でこの読みを強制`}
+                  title={t('duoyinzi.tree.forceIvsTitle', {
+                    char: detail.char,
+                    code: (0xe01e1 + index).toString(16).toUpperCase(),
+                  })}
                 >
                   IVS U+{(0xe01e1 + index).toString(16).toUpperCase()}
                 </span>
@@ -460,7 +476,7 @@ function ReadingTree({ detail }: { detail: DuoyinziDetail }) {
               )}
               {(!pattern || pattern.phrases.length === 0) && index > 0 && (
                 <p className="mt-1 text-[11px] text-slate-600">
-                  単語コンテキスト（rclt_0）の登録なし
+                  {t('duoyinzi.tree.noWordContext')}
                 </p>
               )}
             </div>
@@ -470,7 +486,7 @@ function ReadingTree({ detail }: { detail: DuoyinziDetail }) {
           <span className="absolute left-0 top-4 w-4 border-t-2 border-line" />
           <div className="flex items-center gap-2 pt-1.5">
             <span className="rounded-full border border-line px-2.5 py-0.5 text-sm text-slate-500">
-              拼音なし
+              {t('duoyinzi.tree.noPinyin')}
             </span>
             <span className="text-[10px] uppercase tracking-wide text-slate-600">ss00</span>
             <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-slate-500">
@@ -520,6 +536,7 @@ function PhrasePatternList({
   patterns: PhrasePattern[]
   focusChar: string
 }) {
+  const { t } = useTranslation()
   return (
     <div>
       <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -550,13 +567,14 @@ function PhrasePatternList({
                 </span>
               ))}
               <span className="ml-2 text-[10px] text-slate-600">
-                枠付き = 読みが切り替わる位置
+                {t('duoyinzi.pattern.frameHint')}
               </span>
             </div>
             {pattern.ignore && (
               <p className="mt-1.5 text-[11px] text-slate-500">
-                除外コンテキスト: <span className="text-slate-400">{pattern.ignore}</span>
-                （' の位置では切り替えない）
+                {t('duoyinzi.pattern.ignoreContext')}
+                <span className="text-slate-400">{pattern.ignore}</span>
+                {t('duoyinzi.pattern.ignoreNote')}
               </p>
             )}
           </div>
@@ -568,6 +586,7 @@ function PhrasePatternList({
 
 function GsubTab() {
   const { projectId } = useProject()
+  const { t } = useTranslation()
   const [lookup, setLookup] = useState('lookup_rclt_0')
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
@@ -596,7 +615,7 @@ function GsubTab() {
         <div>
           <p className="text-slate-300">{(overview.error as Error).message}</p>
           <p className="mt-2 text-sm text-slate-500">
-            GSUB テーブルの表示にはテンプレート準備（prepare）の完了が必要です。
+            {t('duoyinzi.gsub.prepareRequired')}
           </p>
         </div>
       </div>
@@ -619,13 +638,15 @@ function GsubTab() {
     <div className="flex flex-1 overflow-hidden">
       <aside className="w-64 shrink-0 overflow-y-auto border-r border-line p-4">
         <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Feature / Lookup
+          {t('duoyinzi.gsub.featureLookup')}
         </h4>
         <div className="mb-4 space-y-1 text-xs text-slate-400">
           {Object.entries(overview.data.features).map(([feature, lookups]) => (
             <div key={feature} className="rounded-lg bg-surface-raised px-3 py-2">
               <span className="font-mono text-accent-hover">{feature}</span>
-              <span className="ml-1 text-slate-600">({lookups.length} lookups)</span>
+              <span className="ml-1 text-slate-600">
+                {t('duoyinzi.gsub.lookupsCount', { count: lookups.length })}
+              </span>
             </div>
           ))}
         </div>
@@ -649,8 +670,7 @@ function GsubTab() {
           ))}
         </div>
         <p className="mt-4 text-[11px] leading-relaxed text-slate-600">
-          rclt_0 = パターン1（単語コンテキスト）、rclt_1 = パターン2（熟語）、
-          rclt_2 = 例外パターン。読みの変更はビルド時に再生成されます。
+          {t('duoyinzi.gsub.legend')}
         </p>
       </aside>
 
@@ -658,7 +678,7 @@ function GsubTab() {
         <div className="mb-3 flex items-center gap-3">
           <Input
             className="max-w-xs"
-            placeholder="文字 or グリフ名でルールを検索"
+            placeholder={t('duoyinzi.gsub.searchPlaceholder')}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
@@ -670,7 +690,11 @@ function GsubTab() {
             }}
           />
           <span className="text-xs text-slate-500">
-            {rules.data && `${rules.data.total} ルール (${rules.data.type})`}
+            {rules.data &&
+              t('duoyinzi.gsub.rulesCount', {
+                count: rules.data.total,
+                type: rules.data.type,
+              })}
           </span>
           {rules.isFetching && <Spinner />}
         </div>
@@ -684,7 +708,7 @@ function GsubTab() {
         {totalPages > 1 && (
           <div className="mt-4 flex items-center justify-center gap-4 text-sm">
             <Button variant="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              前へ
+            {t('common.prev')}
             </Button>
             <span className="text-slate-500">
               {page} / {totalPages}
@@ -694,7 +718,7 @@ function GsubTab() {
               disabled={page >= totalPages}
               onClick={() => setPage(page + 1)}
             >
-              次へ
+              {t('common.next')}
             </Button>
           </div>
         )}

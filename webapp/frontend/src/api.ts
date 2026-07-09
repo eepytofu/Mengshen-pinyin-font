@@ -1,3 +1,4 @@
+import { apiErrorMessage } from './i18n/apiError'
 import type {
   Canvas,
   GlyphDetail,
@@ -13,14 +14,13 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     ...init,
   })
   if (!res.ok) {
-    let detail = res.statusText
+    let detail: unknown
     try {
-      const body = await res.json()
-      detail = body.detail ?? detail
+      detail = (await res.json()).detail
     } catch {
       /* not json */
     }
-    throw new Error(detail)
+    throw new Error(apiErrorMessage(detail as never, res.statusText))
   }
   if (res.status === 204) return undefined as T
   return res.json()

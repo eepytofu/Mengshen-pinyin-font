@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { Button, Card, Input, SliderRow, Switch } from '../components/ui'
@@ -9,6 +10,7 @@ import { useProject } from './ProjectLayout'
 export default function AdjustStep() {
   const { project, projectId } = useProject()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const [canvas, setCanvas] = useState<Canvas | null>(null)
@@ -68,19 +70,19 @@ export default function AdjustStep() {
   return (
     <div className="flex h-full">
       <div className="w-80 shrink-0 space-y-5 overflow-y-auto border-r border-line p-6">
-        <h2 className="text-lg font-bold text-slate-100">拼音の位置調整</h2>
+        <h2 className="text-lg font-bold text-slate-100">{t('adjust.title')}</h2>
 
-        <Card title="キャンバス">
+        <Card title={t('adjust.canvas')}>
           <div className="space-y-4">
             <SliderRow
-              label="幅 (width)"
+              label={t('adjust.width')}
               value={canvas.pinyin.width}
               min={200}
               max={1200}
               onChange={(v) => update((d) => (d.pinyin.width = v))}
             />
             <SliderRow
-              label="高さ (height)"
+              label={t('adjust.height')}
               value={canvas.pinyin.height}
               min={100}
               max={600}
@@ -88,14 +90,14 @@ export default function AdjustStep() {
               onChange={(v) => update((d) => (d.pinyin.height = v))}
             />
             <SliderRow
-              label="ベースライン (base_line)"
+              label={t('adjust.baseLine')}
               value={canvas.pinyin.base_line}
               min={600}
               max={1200}
               onChange={(v) => update((d) => (d.pinyin.base_line = v))}
             />
             <SliderRow
-              label="字間 (tracking)"
+              label={t('adjust.tracking')}
               value={canvas.pinyin.tracking}
               min={0}
               max={120}
@@ -105,15 +107,15 @@ export default function AdjustStep() {
           </div>
         </Card>
 
-        <Card title="重なり回避">
+        <Card title={t('adjust.avoidOverlap')}>
           <div className="space-y-4">
             <Switch
-              label="重なり回避モード"
+              label={t('adjust.avoidOverlapMode')}
               checked={canvas.is_avoid_overlapping_mode}
               onChange={(v) => update((d) => (d.is_avoid_overlapping_mode = v))}
             />
             <SliderRow
-              label="X 縮小量"
+              label={t('adjust.xReduction')}
               value={canvas.x_scale_reduction_for_avoid_overlapping}
               min={0}
               max={0.3}
@@ -123,14 +125,14 @@ export default function AdjustStep() {
               }
             />
             <p className="text-xs leading-relaxed text-slate-500">
-              拼音が5〜6文字のとき、横幅を縮小して文字の重なりを避けます。
+              {t('adjust.avoidNote')}
             </p>
           </div>
         </Card>
 
         <div className="flex justify-end">
           <Button onClick={() => navigate(`/projects/${projectId}/glyphs`)}>
-            次へ: グリフ
+            {t('adjust.next')}
           </Button>
         </div>
       </div>
@@ -147,10 +149,10 @@ export default function AdjustStep() {
                 300,
               )
             }}
-            placeholder="プレビューする漢字"
+            placeholder={t('adjust.previewPlaceholder')}
             className="max-w-sm"
           />
-          <span className="text-xs text-slate-500">スライダーで即時反映</span>
+          <span className="text-xs text-slate-500">{t('adjust.liveHint')}</span>
         </div>
 
         {preview && preview.warnings.length > 0 && (

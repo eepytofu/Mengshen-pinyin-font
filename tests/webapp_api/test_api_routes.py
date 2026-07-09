@@ -79,7 +79,7 @@ class TestProjectRoutes:
         )
         result = client.post(f"/api/projects/{project['id']}/build")
         assert result.status_code == 409
-        assert "not acknowledged" in result.json()["detail"]
+        assert result.json()["detail"]["code"] == "license_not_acknowledged"
 
 
 class TestBuildInvalidation:
@@ -104,7 +104,7 @@ class TestBuildInvalidation:
         project = client.post("/api/projects", json={"name": "Test"}).json()
         result = client.get(f"/api/projects/{project['id']}/download")
         assert result.status_code == 409
-        assert "not been built" in result.json()["detail"]
+        assert result.json()["detail"]["code"] == "build_not_current"
 
     def test_font_change_resets_build(self, client, built_project):
         body = client.put(

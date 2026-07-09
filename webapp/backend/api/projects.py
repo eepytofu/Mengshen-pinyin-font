@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 
 from src.refactored.scripts.retrieve_latin_alphabet import ALPHABET
 
+from ..errors import FontValidationError, problem
 from ..schemas import (
     BuiltinSelectRequest,
     FontRole,
@@ -159,7 +160,7 @@ async def upload_font(project_id: str, role: FontRole, file: UploadFile) -> Proj
     filename = file.filename or "font.ttf"
     suffix = Path(filename).suffix.lower()
     if suffix not in (".ttf", ".otf"):
-        raise HTTPException(status_code=422, detail="Only .ttf / .otf are supported")
+        raise problem(422, "only_ttf_otf", "Only .ttf / .otf are supported")
 
     fonts_dir = store.fonts_dir(project_id)
     fonts_dir.mkdir(parents=True, exist_ok=True)
@@ -171,15 +172,16 @@ async def upload_font(project_id: str, role: FontRole, file: UploadFile) -> Proj
         if role == "pinyin":
             missing = font_inspector.pinyin_coverage(target, ALPHABET)
             if missing:
-                raise ValueError(
-                    "Pinyin font is missing required glyphs: "
-                    + " ".join(missing[:20])
-                    + (" …" if len(missing) > 20 else "")
+                glyphs = " ".join(missing[:20]) + (" …" if len(missing) > 20 else "")
+                raise FontValidationError(
+                    "pinyin_missing_glyphs",
+                    f"Pinyin font is missing required glyphs: {glyphs}",
+                    glyphs=glyphs,
                 )
             target = font_inspector.normalize_pinyin_font(target, ALPHABET)
-    except ValueError as e:
+    except FontValidationError as e:
         target.unlink(missing_ok=True)
-        raise HTTPException(status_code=422, detail=str(e))
+        raise problem(422, e.code, e.message, **e.params)
 
     project = _set_font(project, role, target, "upload")
     font_ref = project.base_font if role == "base" else project.pinyin_font
@@ -213,7 +215,9 @@ def acknowledge_license(project_id: str, body: LicenseAcknowledgeRequest) -> Pro
     project = get_project_or_404(project_id)
     font_ref = project.base_font if body.role == "base" else project.pinyin_font
     if font_ref is None:
-        raise HTTPException(status_code=409, detail=f"No {body.role} font selected yet")
+        raise problem(
+            409, "no_font_selected", f"No {body.role} font selected", role=body.role
+        )
 
     info = project.license[body.role]
     info.acknowledged = body.acknowledged

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, CircleAlert, Download, FolderOpen, Hammer } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { Badge, Button, Card, Input, Progress, Spinner } from '../components/ui'
 import type { TaskState } from '../types'
@@ -7,6 +8,7 @@ import { useProject } from './ProjectLayout'
 
 export default function BuildStep() {
   const { project, projectId } = useProject()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const health = useQuery({ queryKey: ['health'], queryFn: api.health })
@@ -57,25 +59,28 @@ export default function BuildStep() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-8 py-8">
       <header>
-        <h2 className="text-lg font-bold text-slate-100">フォント出力</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          全 16,000 字超へ拼音を合成し、GSUB（多音字切替）を組み込んだ TTF を生成します。
-        </p>
+        <h2 className="text-lg font-bold text-slate-100">{t('build.title')}</h2>
+        <p className="mt-1 text-sm text-slate-500">{t('build.subtitle')}</p>
       </header>
 
-      <Card title="チェックリスト">
+      <Card title={t('build.checklist')}>
         <ul className="space-y-2">
-          <CheckItem ok={toolsOk} label="otfccdump / otfccbuild / jq が利用可能" />
-          <CheckItem ok={Boolean(project.base_font && project.pinyin_font)} label="フォント選択済み" />
-          <CheckItem ok={licensesOk} label="両フォントのライセンス承認済み" />
-          <CheckItem ok={prepareDone} label="テンプレート準備完了" />
+          <CheckItem ok={toolsOk} label={t('build.check.tools')} />
+          <CheckItem
+            ok={Boolean(project.base_font && project.pinyin_font)}
+            label={t('build.check.fonts')}
+          />
+          <CheckItem ok={licensesOk} label={t('build.check.licenses')} />
+          <CheckItem ok={prepareDone} label={t('build.check.prepare')} />
         </ul>
       </Card>
 
-      <Card title="出力設定">
+      <Card title={t('build.output')}>
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <label className="mb-1 block text-xs text-slate-500">フォントファミリー名</label>
+            <label className="mb-1 block text-xs text-slate-500">
+              {t('build.familyName')}
+            </label>
             <Input
               defaultValue={project.output.family_name}
               onBlur={(e) => {
@@ -86,28 +91,28 @@ export default function BuildStep() {
             />
           </div>
           <div className="w-28">
-            <label className="mb-1 block text-xs text-slate-500">バージョン</label>
+            <label className="mb-1 block text-xs text-slate-500">
+              {t('build.version')}
+            </label>
             <Input defaultValue={project.output.version} disabled />
           </div>
         </div>
         {project.base_font?.source.startsWith('builtin:') && (
-          <p className="mt-2 text-xs text-slate-500">
-            プリセットビルドでは Mengshen 公式の name テーブルが使われます。
-          </p>
+          <p className="mt-2 text-xs text-slate-500">{t('build.presetNameNote')}</p>
         )}
       </Card>
 
       <TaskCard
-        title="1. テンプレート準備（otfccdump）"
+        title={t('build.prepareTitle')}
         task={project.tasks.prepare}
-        actionLabel="準備を実行"
+        actionLabel={t('build.prepareAction')}
         onStart={() => startPrepare.mutate()}
         disabled={!licensesOk || !toolsOk || anyRunning}
       />
       <TaskCard
-        title="2. フォントビルド（otfccbuild）"
+        title={t('build.buildTitle')}
         task={project.tasks.build}
-        actionLabel="ビルドを実行"
+        actionLabel={t('build.buildAction')}
         onStart={() => startBuild.mutate()}
         disabled={!prepareDone || !toolsOk || anyRunning}
         icon={<Hammer className="h-4 w-4" />}
@@ -118,14 +123,14 @@ export default function BuildStep() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-slate-100">
-                {project.output.family_name}.ttf
+                {t('build.builtFile', { name: project.output.family_name })}
               </p>
-              <p className="text-xs text-slate-500">ビルド完了 — ダウンロードできます</p>
+              <p className="text-xs text-slate-500">{t('build.buildDoneDownload')}</p>
             </div>
             <a href={`/api/projects/${projectId}/download`} download>
               <Button>
                 <span className="flex items-center gap-2">
-                  <Download className="h-4 w-4" /> ダウンロード
+                  <Download className="h-4 w-4" /> {t('common.download')}
                 </span>
               </Button>
             </a>
@@ -144,12 +149,7 @@ interface StorageEntry {
   size: number
 }
 
-const STORAGE_GROUPS: [string, string][] = [
-  ['state', 'プロジェクト状態（フォント選択・ライセンス合意・読みの変更）'],
-  ['fonts', 'アップロード / 選択フォント'],
-  ['intermediate', '中間ファイル（テンプレート JSON など）'],
-  ['output', 'ビルド成果物'],
-]
+const STORAGE_GROUPS = ['state', 'fonts', 'intermediate', 'output'] as const
 
 function formatSize(bytes: number): string {
   if (bytes >= 1 << 30) return `${(bytes / (1 << 30)).toFixed(1)} GB`
@@ -159,6 +159,7 @@ function formatSize(bytes: number): string {
 }
 
 function StorageCard({ projectId, refreshKey }: { projectId: string; refreshKey: string }) {
+  const { t } = useTranslation()
   const storage = useQuery({
     queryKey: ['storage', projectId, refreshKey],
     queryFn: async () => {
@@ -174,17 +175,19 @@ function StorageCard({ projectId, refreshKey }: { projectId: string; refreshKey:
       title={
         <span className="flex items-center gap-2">
           <FolderOpen className="h-4 w-4 text-slate-500" />
-          プロジェクトの保存データ（合計 {formatSize(storage.data.total)}）
+          {t('build.storage.title', { size: formatSize(storage.data.total) })}
         </span>
       }
     >
       <div className="space-y-4">
-        {STORAGE_GROUPS.map(([key, label]) => {
+        {STORAGE_GROUPS.map((key) => {
           const rows = storage.data!.groups[key] ?? []
           if (rows.length === 0) return null
           return (
             <div key={key}>
-              <p className="mb-1.5 text-xs font-medium text-slate-400">{label}</p>
+              <p className="mb-1.5 text-xs font-medium text-slate-400">
+                {t(`build.storage.group.${key}`)}
+              </p>
               <ul className="space-y-1">
                 {rows.map((row) => (
                   <li
@@ -204,8 +207,7 @@ function StorageCard({ projectId, refreshKey }: { projectId: string; refreshKey:
           )
         })}
         <p className="text-xs text-slate-600">
-          すべて tmp/projects/{projectId}/（成果物は outputs/webapp/{projectId}/）に
-          プロジェクト単位で保存され、プロジェクト削除時にまとめて削除されます。
+          {t('build.storage.note', { id: projectId })}
         </p>
       </div>
     </Card>
@@ -240,18 +242,19 @@ function TaskCard({
   disabled: boolean
   icon?: React.ReactNode
 }) {
+  const { t } = useTranslation()
   return (
     <Card
       title={title}
       actions={
         task.status === 'done' ? (
-          <Badge tone="success">完了</Badge>
+          <Badge tone="success">{t('build.status.done')}</Badge>
         ) : task.status === 'running' ? (
-          <Badge tone="accent">実行中: {task.stage}</Badge>
+          <Badge tone="accent">{t('build.status.running', { stage: task.stage })}</Badge>
         ) : task.status === 'error' ? (
-          <Badge tone="error">エラー</Badge>
+          <Badge tone="error">{t('build.status.error')}</Badge>
         ) : (
-          <Badge>未実行</Badge>
+          <Badge>{t('build.status.idle')}</Badge>
         )
       }
     >
@@ -270,7 +273,7 @@ function TaskCard({
         <Button variant={task.status === 'done' ? 'ghost' : 'primary'} disabled={disabled} onClick={onStart}>
           <span className="flex items-center gap-2">
             {icon}
-            {task.status === 'done' ? `再実行` : actionLabel}
+            {task.status === 'done' ? t('build.status.rerun') : actionLabel}
           </span>
         </Button>
       )}

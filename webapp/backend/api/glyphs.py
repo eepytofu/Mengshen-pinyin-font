@@ -41,11 +41,7 @@ def glyph_detail(project_id: str, name: str) -> dict:
         {"id": table_id, "label": glyph_catalog.STANDARD_TABLE_LABELS[table_id]}
         for table_id in glyph_catalog.tables_for(codepoints)
     ]
-    ivs = (
-        glyph_catalog.ivs_sequences(readings)
-        if entry["category"] == "hanzi"
-        else []
-    )
+    ivs = glyph_catalog.ivs_sequences(readings) if entry["category"] == "hanzi" else []
     return {**entry, "readings": readings, "tables": tables, "ivs": ivs}
 
 

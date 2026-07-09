@@ -1,18 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Languages, Plus, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { Badge, Button, Card, Spinner } from '../components/ui'
 
 export default function Home() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const projects = useQuery({ queryKey: ['projects'], queryFn: api.listProjects })
   const health = useQuery({ queryKey: ['health'], queryFn: api.health })
 
   const createMutation = useMutation({
-    mutationFn: () => api.createProject('新しいフォント'),
+    mutationFn: () => api.createProject(t('home.newProjectName')),
     onSuccess: (project) => navigate(`/projects/${project.id}/fonts`),
   })
   const deleteMutation = useMutation({
@@ -28,21 +31,23 @@ export default function Home() {
             <Languages className="h-5 w-5 text-accent-hover" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-100">Mengshen Font Studio</h1>
-            <p className="text-sm text-slate-500">拼音フォントをブラウザで作成</p>
+            <h1 className="text-xl font-bold text-slate-100">{t('home.title')}</h1>
+            <p className="text-sm text-slate-500">{t('home.subtitle')}</p>
           </div>
         </div>
-        <Button onClick={() => createMutation.mutate()}>
-          <span className="flex items-center gap-2">
-            <Plus className="h-4 w-4" /> 新規プロジェクト
-          </span>
-        </Button>
+        <div className="flex items-center gap-4">
+          <LanguageSwitcher />
+          <Button onClick={() => createMutation.mutate()}>
+            <span className="flex items-center gap-2">
+              <Plus className="h-4 w-4" /> {t('home.newProject')}
+            </span>
+          </Button>
+        </div>
       </header>
 
       {health.data && health.data.missing_tools.length > 0 && (
         <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
-          必須ツールが見つかりません: {health.data.missing_tools.join(', ')} —
-          ビルドを実行するには brew でインストールしてください。
+          {t('home.missingTools', { tools: health.data.missing_tools.join(', ') })}
         </div>
       )}
 
@@ -64,11 +69,13 @@ export default function Home() {
                 <StepBadge project={project} />
               </div>
               <p className="text-xs text-slate-500">
-                {project.base_font?.family_name ?? 'ベースフォント未選択'}
+                {project.base_font?.family_name ?? t('home.baseFontUnset')}
                 {project.pinyin_font && ` + ${project.pinyin_font.family_name}`}
               </p>
               <p className="mt-1 text-xs text-slate-600">
-                更新: {new Date(project.updated_at).toLocaleString()}
+                {t('home.updatedAt', {
+                  date: new Date(project.updated_at).toLocaleString(),
+                })}
               </p>
             </button>
             <div className="mt-3 flex justify-end border-t border-line pt-3">
@@ -76,7 +83,7 @@ export default function Home() {
                 variant="ghost"
                 className="!px-2 !py-1"
                 onClick={() => {
-                  if (confirm(`「${project.name}」を削除しますか？生成物も削除されます。`)) {
+                  if (confirm(t('home.deleteConfirm', { name: project.name }))) {
                     deleteMutation.mutate(project.id)
                   }
                 }}
@@ -90,7 +97,7 @@ export default function Home() {
 
       {projects.data?.length === 0 && (
         <div className="rounded-xl border border-dashed border-line py-20 text-center text-slate-500">
-          プロジェクトがありません。「新規プロジェクト」から始めましょう。
+          {t('home.empty')}
         </div>
       )}
     </div>
@@ -98,7 +105,10 @@ export default function Home() {
 }
 
 function StepBadge({ project }: { project: { tasks: { build: { status: string } }; step: string } }) {
-  if (project.tasks.build.status === 'done') return <Badge tone="success">ビルド済み</Badge>
-  if (project.tasks.build.status === 'running') return <Badge tone="accent">ビルド中</Badge>
-  return <Badge>{project.step}</Badge>
+  const { t } = useTranslation()
+  if (project.tasks.build.status === 'done')
+    return <Badge tone="success">{t('home.built')}</Badge>
+  if (project.tasks.build.status === 'running')
+    return <Badge tone="accent">{t('home.building')}</Badge>
+  return <Badge>{t(`nav.steps.${project.step}`, project.step)}</Badge>
 }

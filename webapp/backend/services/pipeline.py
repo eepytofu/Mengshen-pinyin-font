@@ -9,8 +9,6 @@ import shutil
 from pathlib import Path
 from typing import Callable, Optional
 
-from src.refactored.config.paths import ProjectPaths
-
 from src.refactored.config.font_config import (
     FontConstants,
     FontMetadata,
@@ -18,6 +16,7 @@ from src.refactored.config.font_config import (
     HanziCanvas,
     PinyinCanvas,
 )
+from src.refactored.config.paths import ProjectPaths
 from src.refactored.data import PinyinDataManager
 from src.refactored.generation.font_builder import FontBuilder
 from src.refactored.scripts.make_template_jsons import TemplateJsonMaker
