@@ -53,7 +53,7 @@ export const api = {
     })
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
-      throw new Error(body.detail ?? res.statusText)
+      throw new Error(apiErrorMessage(body.detail, res.statusText))
     }
     return res.json() as Promise<Project>
   },
