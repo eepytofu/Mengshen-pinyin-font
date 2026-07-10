@@ -21,8 +21,8 @@ const STEPS = [
   { path: 'license', icon: ScrollText },
   { path: 'adjust', icon: SlidersHorizontal },
   { path: 'glyphs', icon: Grid3X3 },
-  { path: 'duoyinzi', icon: BookOpenText },
   { path: 'readings', icon: Pencil },
+  { path: 'duoyinzi', icon: BookOpenText },
   { path: 'build', icon: Package },
 ] as const
 

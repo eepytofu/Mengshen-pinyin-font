@@ -19,8 +19,8 @@ export default function App() {
         <Route path="license" element={<LicenseStep />} />
         <Route path="adjust" element={<AdjustStep />} />
         <Route path="glyphs" element={<GlyphsStep />} />
-        <Route path="duoyinzi" element={<DuoyinziStep />} />
         <Route path="readings" element={<ReadingsStep />} />
+        <Route path="duoyinzi" element={<DuoyinziStep />} />
         <Route path="build" element={<BuildStep />} />
       </Route>
     </Routes>
