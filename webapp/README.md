@@ -42,7 +42,10 @@ cd webapp/frontend && npm run dev   # http://localhost:5173
 3. **位置調整** — PinyinCanvas（width/height/base_line/tracking）と重なり回避をスライダーで調整。
    本番の配置計算（`PinyinGlyphGenerator`）をそのまま使った SVG プレビューが即時反映
 4. **グリフ一覧** — 全グリフを検索・カテゴリフィルタ付きで閲覧、詳細から読み編集へ
-5. **多音字 / GSUB** — 対応多音字の読み組み合わせと rclt (GSUB) テーブルのルールを表示
+5. **多音字 / GSUB** — 対応多音字の読み組み合わせと rclt (GSUB) テーブルのルールを表示。
+   GSUB タブは「ルール一覧」と「グラフ」（文字ごとにコンテキスト→lookup→読みを可視化）を切替可能。
+   「検証」タブでは res/phonics/duo_yin_zi のフレーズ表を全件シミュレートし、
+   生成された GSUB が期待どおりの読みを表示するか確認できる（詳細は下記）
 6. **読みの編集** — 文字ごとの拼音を置換/追加（ビルド時に反映）
 7. **ビルド** — テンプレート準備（otfccdump）→ フルビルド（otfccbuild）→ TTF ダウンロード
 
@@ -62,6 +65,21 @@ cd webapp/frontend && npm run dev   # http://localhost:5173
 プロジェクト削除でこれらすべて（成果物含む）が削除されます。
 旧レイアウト（`tmp/json/*_proj_<id>.json`）のテンプレートは読み取り時にフォールバックされ、
 次回の prepare 実行時にプロジェクト配下へ移動されます。
+
+## GSUB 検証タブのステータス区分
+
+多音字 / GSUB → 検証 タブは、`res/phonics/duo_yin_zi/` のフレーズ表（期待読み）を
+実際に生成された GSUB（rclt）テーブルに OpenType シェーパーと同じ手順で適用し、
+文字ごとに次の3状態へ分類する（`webapp/backend/services/gsub_checker.py`）:
+
+| ステータス | 意味 | 対応要否 |
+|---|---|---|
+| **一致** | 表示される読みが期待どおり | 対応不要 |
+| **標準読みのまま** | ルールが発火しなかった、または「置換しない」例外ルール（ignore）で意図的に抑止された。標準の読み（readings[0]）のまま表示されるが、設計上の挙動であり誤りではない（例: 背着手 の 着 は zhe へ切り替えるルールが無いため zháo のまま表示される） | 通常は対応不要（カバレッジ拡張の余地はある） |
+| **誤置換** | ルールは発火したが、期待と異なる読みに置換された | **要修正**。パターン表（`outputs/duoyinzi_pattern_one.txt` 等）の ss 番号が現在の `outputs/merged-mapping-table.txt` の読み順とずれている可能性が高い |
+
+「誤置換」の直し方や診断コマンドは `.claude/commands/font-debug.md` の
+「パターン6: 多音字の拼音が期待と違う」を参照。
 
 ## テスト
 

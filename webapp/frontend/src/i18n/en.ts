@@ -197,8 +197,15 @@ export const en: Resources = {
       running: 'Verifying…',
       status: {
         ok: 'Match',
-        fallback: 'Default reading',
-        wrong: 'Mismatch',
+        fallback: 'Unswitched (default)',
+        wrong: 'Wrong substitution',
+      },
+      statusHint: {
+        ok: 'The displayed reading matches what was expected.',
+        fallback:
+          "No rule fired, or an exception rule deliberately suppressed substitution, so the character shows its default reading. This isn't an error.",
+        wrong:
+          'A rule fired but produced a different reading than expected — the pattern table’s ss index may be out of sync with the current reading order.',
       },
       all: 'All ({{count}})',
       filterLabel: '{{label}} ({{count}})',

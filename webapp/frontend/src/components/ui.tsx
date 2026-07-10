@@ -59,9 +59,11 @@ export function Input({
 export function Badge({
   children,
   tone = 'default',
+  title,
 }: {
   children: ReactNode
   tone?: 'default' | 'success' | 'warning' | 'error' | 'accent'
+  title?: string
 }) {
   const styles = {
     default: 'bg-surface-overlay text-slate-300',
@@ -71,7 +73,10 @@ export function Badge({
     accent: 'bg-accent/15 text-accent-hover',
   }[tone]
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles}`}>
+    <span
+      title={title}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles}`}
+    >
       {children}
     </span>
   )

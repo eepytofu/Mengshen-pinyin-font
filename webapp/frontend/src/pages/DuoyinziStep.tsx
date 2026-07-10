@@ -1262,7 +1262,10 @@ function VerifyTab() {
               </button>
               {(['ok', 'fallback', 'wrong'] as const).map((status) => (
                 <button key={status} onClick={() => setFilter(status)}>
-                  <Badge tone={filter === status ? STATUS_TONE[status] : 'default'}>
+                  <Badge
+                    tone={filter === status ? STATUS_TONE[status] : 'default'}
+                    title={t(`duoyinzi.verify.statusHint.${status}`)}
+                  >
                     {t('duoyinzi.verify.filterLabel', {
                       label: t(`duoyinzi.verify.status.${status}`),
                       count: verify.data!.counts[status],
@@ -1292,7 +1295,10 @@ function VerifyTab() {
                   <tr key={row.phrase} className="align-top">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
-                        <Badge tone={STATUS_TONE[row.status]}>
+                        <Badge
+                          tone={STATUS_TONE[row.status]}
+                          title={t(`duoyinzi.verify.statusHint.${row.status}`)}
+                        >
                           {t(`duoyinzi.verify.status.${row.status}`)}
                         </Badge>
                         <span className="text-lg text-slate-100">{row.phrase}</span>
