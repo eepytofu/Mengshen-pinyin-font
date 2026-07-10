@@ -350,74 +350,33 @@ class GSUBTableGenerator:
                     # > e.g.:
                     # > sub [uni4E0D uni9280] uni884C' lookup lookup_0 ;
                     # > sub uni884C' lookup lookup_0　[uni4E0D uni9280] ;
-                    left_match = [p for p in patterns if p.endswith("~")]
-                    right_match = [p for p in patterns if p.startswith("~")]
+                    # Context patterns: ~ の位置が置換対象、文脈は1文字ずつの
+                    # グループにする（文脈が2文字以上でも1ルールになる）
                     # レガシーコードコメント:
                     # > 一つ一つ記述するもの
                     # > e.g.:
                     # > sub uni85CF' lookup lookup_0 uni7D05 uni82B1 ;
-                    other_match = [
-                        p
-                        for p in patterns
-                        if "~" in p and p not in (left_match + right_match)
-                    ]
-
-                    # Left context patterns: [context] target'
-                    for pattern in left_match:
-                        context_char = pattern.replace("~", "")
-                        context_cid = self.cmap_manager.convert_hanzi_to_cid_safe(
-                            context_char
-                        )
-                        if context_cid:
+                    for pattern in patterns:
+                        if "~" not in pattern:
+                            continue
+                        at_pos = pattern.index("~")
+                        chars = list(pattern.replace("~", hanzi))
+                        match_cids: List[List[str]] = []
+                        for char in chars:
+                            char_cid = self.cmap_manager.convert_hanzi_to_cid_safe(char)
+                            if not char_cid:
+                                # 文脈の1文字でも cmap に無ければルールごと捨てる
+                                break
+                            match_cids.append([char_cid])
+                        else:
                             rclt_0_subtables.append(
                                 {
-                                    "match": [[context_cid], [cid]],
-                                    "apply": [{"at": 1, "lookup": lookup_name}],
-                                    "inputBegins": 1,
-                                    "inputEnds": 2,
+                                    "match": match_cids,
+                                    "apply": [{"at": at_pos, "lookup": lookup_name}],
+                                    "inputBegins": at_pos,
+                                    "inputEnds": at_pos + 1,
                                 }
                             )
-
-                    # Right context patterns: target' [context]
-                    for pattern in right_match:
-                        context_char = pattern.replace("~", "")
-                        context_cid = self.cmap_manager.convert_hanzi_to_cid_safe(
-                            context_char
-                        )
-                        if context_cid:
-                            rclt_0_subtables.append(
-                                {
-                                    "match": [[cid], [context_cid]],
-                                    "apply": [{"at": 0, "lookup": lookup_name}],
-                                    "inputBegins": 0,
-                                    "inputEnds": 1,
-                                }
-                            )
-
-                    # Multi-character context patterns
-                    for pattern in other_match:
-                        if "~" in pattern:
-                            at_pos = pattern.index("~")
-                            chars = list(pattern.replace("~", hanzi))
-                            match_cids = []
-                            for char in chars:
-                                char_cid = self.cmap_manager.convert_hanzi_to_cid_safe(
-                                    char
-                                )
-                                if char_cid:
-                                    match_cids.append([char_cid])
-
-                            if match_cids:
-                                rclt_0_subtables.append(
-                                    {
-                                        "match": match_cids,
-                                        "apply": [
-                                            {"at": at_pos, "lookup": lookup_name}
-                                        ],
-                                        "inputBegins": at_pos,
-                                        "inputEnds": at_pos + 1,
-                                    }
-                                )
 
     def _make_rclt1_feature(self) -> None:
         """Generate pattern two -> updates lookup_rclt_1."""

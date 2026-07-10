@@ -115,16 +115,17 @@ def search_4_replacement_destination(phrase, source_character, pattern_table):
     return None
 
 # パターンテーブルの txt を出力する
+# order は merged-mapping-table.txt の読みの添字 + 1（= ss 番号）。
+# パターンの無い読みを飛ばしても番号を詰めない（ssNN = readings[NN-1] の規約を守る）
 def export_pattern_one_table(pattern_table, PATTERN_ONE_TABLE_FILE):
     with open(PATTERN_ONE_TABLE_FILE, mode='w', encoding='utf-8') as write_file:
         for character in pattern_table:
-            order = SS_NORMAL_PRONUNCIATION
-            for pinyin in PINYIN_MAPPING_TABLE[character]:
+            for index, pinyin in enumerate( PINYIN_MAPPING_TABLE[character] ):
                 if pinyin in list( pattern_table[character]["patterns"].keys() ):
+                    order = SS_NORMAL_PRONUNCIATION + index
                     str_patterns = expand_pattern_list2str( pattern_table[character]["patterns"][pinyin] )
                     line = "{0}, {1}, {2}, [{3}]\n".format(order, character, pinyin, str_patterns)
                     write_file.write(line)
-                    order += 1
 
 # 単語中に含まれる標準的でないピンインの数を返す
 def seek_variational_pronunciation_in_phrase(phrase_instance):
@@ -241,8 +242,11 @@ def make_pattern_two(phrase_holder, OUTPUT_PATTERN_TWO_TABLE_FILE):
 def make_exceptional_pattern(OUTPUT_EXCEPTION_PATTERN_TABLE_FILE):
     dict_base = {
         "lookup_table": {
+            # ss 番号は merged-mapping-table.txt の読みの添字 + 1
+            # 着: [zháo, zhù, zhāo, zhuó, zhe, zhuo] -> zhuó = ss04
+            # 轴: [zhóu, zhòu, zhú] -> zhòu = ss02
             "lookup_pattern_20": {
-                "着" : "着.ss02",
+                "着" : "着.ss04",
                 "轴" : "轴.ss02"
             }
         },

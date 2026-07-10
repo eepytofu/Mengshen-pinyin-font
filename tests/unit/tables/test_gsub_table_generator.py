@@ -516,6 +516,78 @@ class TestGSUBTableGeneratorRCLT0Feature:
             assert "inputEnds" in subtable
 
     @pytest.mark.unit
+    def test_make_rclt0_feature_multi_char_right_context(self):
+        """右文脈が2文字以上のパターン（例: 藏 の "~红花"）もルール化される。
+
+        レガシー実装は sub uni85CF' lookup lookup_0 uni7D05 uni82B1 ;
+        のように文字ごとの文脈グループを生成していた。
+        """
+        character_manager = Mock(spec=CharacterDataManager)
+        mapping_manager = Mock(spec=MappingDataManager)
+        mapping_manager.has_glyph_for_character.return_value = True
+        cmap_table = {
+            "34255": "uni85CF",  # 藏
+            "32418": "uni7EA2",  # 红
+            "33457": "uni82B1",  # 花
+        }
+        generator = GSUBTableGenerator(
+            pattern_one_path=Path("/mock/pattern_one.txt"),
+            pattern_two_path=Path("/mock/pattern_two.json"),
+            exception_pattern_path=Path("/mock/exception.json"),
+            character_manager=character_manager,
+            mapping_manager=mapping_manager,
+            cmap_table=cmap_table,
+        )
+        generator.pattern_one = [
+            {"藏": {"variational_pronunciation": "zàng", "patterns": "[~红花]"}}
+        ]
+
+        generator._make_rclt0_feature()
+
+        rclt_0_subtables = generator.gsub_data["lookups"]["lookup_rclt_0"]["subtables"]
+        expected_rule = {
+            "match": [["uni85CF"], ["uni7EA2"], ["uni82B1"]],
+            "apply": [{"at": 0, "lookup": "lookup_11_2"}],
+            "inputBegins": 0,
+            "inputEnds": 1,
+        }
+        assert expected_rule in rclt_0_subtables
+
+    @pytest.mark.unit
+    def test_make_rclt0_feature_multi_char_left_context(self):
+        """左文脈が2文字以上のパターン（例: 和 の "一唱一~"）もルール化される。"""
+        character_manager = Mock(spec=CharacterDataManager)
+        mapping_manager = Mock(spec=MappingDataManager)
+        mapping_manager.has_glyph_for_character.return_value = True
+        cmap_table = {
+            "21644": "uni548C",  # 和
+            "19968": "uni4E00",  # 一
+            "21809": "uni5531",  # 唱
+        }
+        generator = GSUBTableGenerator(
+            pattern_one_path=Path("/mock/pattern_one.txt"),
+            pattern_two_path=Path("/mock/pattern_two.json"),
+            exception_pattern_path=Path("/mock/exception.json"),
+            character_manager=character_manager,
+            mapping_manager=mapping_manager,
+            cmap_table=cmap_table,
+        )
+        generator.pattern_one = [
+            {"和": {"variational_pronunciation": "hè", "patterns": "[一唱一~]"}}
+        ]
+
+        generator._make_rclt0_feature()
+
+        rclt_0_subtables = generator.gsub_data["lookups"]["lookup_rclt_0"]["subtables"]
+        expected_rule = {
+            "match": [["uni4E00"], ["uni5531"], ["uni4E00"], ["uni548C"]],
+            "apply": [{"at": 3, "lookup": "lookup_11_2"}],
+            "inputBegins": 3,
+            "inputEnds": 4,
+        }
+        assert expected_rule in rclt_0_subtables
+
+    @pytest.mark.unit
     def test_make_rclt0_feature_max_patterns_limit(self):
         """Test RCLT0 maximum patterns limit."""
         character_manager = Mock(spec=CharacterDataManager)
