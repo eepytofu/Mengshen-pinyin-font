@@ -197,13 +197,13 @@ export const en: Resources = {
       running: 'Verifying…',
       status: {
         ok: 'Match',
-        fallback: 'Unswitched (default)',
+        fallback: 'Not in GSUB',
         wrong: 'Wrong substitution',
       },
       statusHint: {
         ok: 'The displayed reading matches what was expected.',
         fallback:
-          "No rule fired, or an exception rule deliberately suppressed substitution, so the character shows its default reading. This isn't an error.",
+          "No GSUB rule is set up yet for this phrase/character (rarely, an exception rule deliberately suppressed substitution instead). It shows the default reading. This isn't a bug — it's missing coverage.",
         wrong:
           'A rule fired but produced a different reading than expected — the pattern table’s ss index may be out of sync with the current reading order.',
       },
