@@ -114,6 +114,7 @@ export const ja = {
       duoyinzi: '多音字パターン',
       gsub: 'GSUB (rclt) テーブル',
       ivs: 'IVS 一覧',
+      verify: '検証',
     },
     noPinyin: '拼音なし',
     ivs: {
@@ -158,6 +159,50 @@ export const ja = {
         'rclt_0 = パターン1（単語コンテキスト）、rclt_1 = パターン2（熟語）、rclt_2 = 例外パターン。読みの変更はビルド時に再生成されます。',
       searchPlaceholder: '文字 or グリフ名でルールを検索',
       rulesCount: '{{count}} ルール ({{type}})',
+      mode: {
+        rules: 'ルール一覧',
+        graph: 'グラフ',
+      },
+    },
+    graph: {
+      charPlaceholder: '文字（例: 着）',
+      show: '表示',
+      contexts: 'コンテキスト（ルール）',
+      lookups: 'サブ lookup',
+      outputs: '出力（読み）',
+      ignoreNode: 'ignore',
+      defaultOutput: 'デフォルト読みのまま',
+      noRules: 'この文字を対象とする rclt ルールはありません。',
+      legend:
+        '生成された GSUB の実ルールから構築。左のコンテキストに一致すると中央の lookup が適用され、右の読みに切り替わります。ignore（赤）は一致時に置換を抑止する例外ルールです。',
+      rulesCount: '{{count}} ルール',
+    },
+    verify: {
+      simTitle: 'フレーズシミュレータ',
+      simNote:
+        '任意の文字列に rclt ルールを OpenType シェーパーと同じ手順で適用し、各文字が表示する読みと発火したルールを確認できます（例: 背着手 は ignore ルールで 着手 の置換が抑止されます）。',
+      simPlaceholder: '例: 背着手',
+      simRun: 'シミュレート',
+      firedRules: '発火ルール:',
+      ignored: 'ignore 適用（置換抑止）',
+      noRule: 'ルール適用なし（デフォルト読み）',
+      batchTitle: '一括検証',
+      batchNote:
+        'res/phonics/duo_yin_zi のフレーズ表（期待読み）を全件シミュレートし、生成された GSUB が期待どおりの読みを表示するか検証します。',
+      run: '一括検証を実行',
+      running: '検証中…',
+      status: {
+        ok: '一致',
+        fallback: 'デフォルト読み',
+        wrong: '不一致',
+      },
+      all: 'すべて ({{count}})',
+      filterLabel: '{{label}} ({{count}})',
+      colPhrase: 'フレーズ',
+      colSource: 'ソース',
+      colDetail: '文字ごとの読み（期待 → 実際）',
+      truncated: '先頭 {{shown}} 件を表示（全 {{total}} 件）',
+      expectedActual: '期待 {{expected}} → 実際 {{actual}}',
     },
   },
   readings: {

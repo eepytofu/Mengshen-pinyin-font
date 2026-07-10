@@ -118,6 +118,7 @@ export const en: Resources = {
       duoyinzi: 'Homograph patterns',
       gsub: 'GSUB (rclt) table',
       ivs: 'IVS list',
+      verify: 'Verify',
     },
     noPinyin: 'No pinyin',
     ivs: {
@@ -162,6 +163,50 @@ export const en: Resources = {
         'rclt_0 = pattern 1 (word context), rclt_1 = pattern 2 (compounds), rclt_2 = exceptions. Reading changes are regenerated at build time.',
       searchPlaceholder: 'Search rules by character or glyph name',
       rulesCount: '{{count}} rules ({{type}})',
+      mode: {
+        rules: 'Rule list',
+        graph: 'Graph',
+      },
+    },
+    graph: {
+      charPlaceholder: 'Character (e.g. 着)',
+      show: 'Show',
+      contexts: 'Contexts (rules)',
+      lookups: 'Sub-lookups',
+      outputs: 'Output (reading)',
+      ignoreNode: 'ignore',
+      defaultOutput: 'Keeps default reading',
+      noRules: 'No rclt rules target this character.',
+      legend:
+        'Built from the actual generated GSUB rules. When a context on the left matches, the middle lookup applies and switches to the reading on the right. ignore (red) is an exception rule that suppresses substitution when matched.',
+      rulesCount: '{{count}} rules',
+    },
+    verify: {
+      simTitle: 'Phrase simulator',
+      simNote:
+        'Applies the rclt lookups to any text the same way an OpenType shaper would, showing the displayed reading and fired rules per character (e.g. in 背着手 the ignore rule suppresses the 着手 substitution).',
+      simPlaceholder: 'e.g. 背着手',
+      simRun: 'Simulate',
+      firedRules: 'Fired rules:',
+      ignored: 'ignore applied (substitution suppressed)',
+      noRule: 'No rule applied (default reading)',
+      batchTitle: 'Batch verification',
+      batchNote:
+        'Simulates every phrase from the res/phonics/duo_yin_zi tables (expected readings) and verifies the generated GSUB displays them.',
+      run: 'Run verification',
+      running: 'Verifying…',
+      status: {
+        ok: 'Match',
+        fallback: 'Default reading',
+        wrong: 'Mismatch',
+      },
+      all: 'All ({{count}})',
+      filterLabel: '{{label}} ({{count}})',
+      colPhrase: 'Phrase',
+      colSource: 'Source',
+      colDetail: 'Per-character readings (expected → actual)',
+      truncated: 'Showing first {{shown}} of {{total}}',
+      expectedActual: 'expected {{expected}} → actual {{actual}}',
     },
   },
   readings: {
