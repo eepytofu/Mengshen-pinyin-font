@@ -6,8 +6,13 @@
 # SETUP INSTRUCTIONS
 # ============================================================================
 # Required tools installation:
-#   pip install black isort flake8 mypy bandit safety
+#   python3.11 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 #   npm install -g cspell markdownlint-cli
+#
+# All Python-based commands below run via .venv/bin/ explicitly rather than
+# a bare `python`/`black`/etc. on PATH — on some machines the system default
+# python3 (e.g. a broken pyenv install) is unusable, and hooks must not
+# depend on whatever happens to resolve first on PATH.
 #
 # Enable hooks:
 #   lefthook install
@@ -51,9 +56,9 @@ pre-commit:
       exclude: "src/legacy/"
       run: |
         # Import sorting with isort
-        isort {staged_files}
-        # Code formatting with black  
-        black {staged_files}
+        .venv/bin/isort {staged_files}
+        # Code formatting with black
+        .venv/bin/black {staged_files}
       stage_fixed: true
       fail_text: "Pythonコードフォーマットが完了しました。変更を確認してコミットしてください。"
 
@@ -61,7 +66,7 @@ pre-commit:
     python-syntax:
       glob: "*.py"
       exclude: "src/legacy/"
-      run: python -m py_compile {staged_files}
+      run: .venv/bin/python -m py_compile {staged_files}
       stage_fixed: true
       fail_text: "Python構文エラーが見つかりました。"
 
@@ -69,21 +74,21 @@ pre-commit:
     python-lint-basic:
       glob: "*.py"
       exclude: "src/legacy/"
-      run: flake8 {staged_files} --count --select=E9,F63,F7,F82 --show-source --statistics
+      run: .venv/bin/flake8 {staged_files} --count --select=E9,F63,F7,F82 --show-source --statistics
       fail_text: "Flake8重要エラーが見つかりました。修正してください。"
 
     # Import順序チェック（CI同様） - legacyコード除外
     import-check:
       glob: "*.py"
       exclude: "src/legacy/"
-      run: isort --check-only --diff {staged_files}
+      run: .venv/bin/isort --check-only --diff {staged_files}
       fail_text: "Import順序が正しくありません。`isort {staged_files}` で修正してください。"
 
     # コードフォーマットチェック（CI同様） - legacyコード除外
     format-check:
       glob: "*.py"
       exclude: "src/legacy/"
-      run: black --check --diff {staged_files}
+      run: .venv/bin/black --check --diff {staged_files}
       fail_text: "コードフォーマットが正しくありません。`black {staged_files}` で修正してください。"
 
     # スペルチェック（変更されたファイルのみ）
@@ -114,7 +119,7 @@ pre-commit:
           cp "$file" "$tmpdir/"
         done
         # Run bandit on staged files
-        bandit -r "$tmpdir" --severity-level medium -c bandit.yaml || echo "セキュリティ警告: banditで問題が検出されました"
+        .venv/bin/bandit -r "$tmpdir" --severity-level medium -c bandit.yaml || echo "セキュリティ警告: banditで問題が検出されました"
         # Cleanup
         rm -rf "$tmpdir"
       fail_text: "セキュリティチェックで問題が見つかりました。修正してください。"
@@ -123,23 +128,23 @@ pre-push:
   commands:
     # コア機能テスト実行
     core-tests:
-      run: python -m pytest tests/unit/ tests/security/ -x --tb=short
+      run: .venv/bin/python -m pytest tests/unit/ tests/security/ -x --tb=short
       fail_text: "コア機能テストが失敗しました。修正してからpushしてください。"
 
     # 基本品質チェック
     quality-basic:
-      run: black --check src/refactored/ tests/ && isort --check src/refactored/ tests/ && flake8 src/refactored/ tests/ --select=E9,F63,F7,F82
+      run: .venv/bin/black --check src/refactored/ tests/ && .venv/bin/isort --check src/refactored/ tests/ && .venv/bin/flake8 src/refactored/ tests/ --select=E9,F63,F7,F82
       fail_text: "基本品質チェック失敗"
 
     # セキュリティチェック（基本）
     security:
-      run: bandit -r src/refactored/ -c bandit.yaml -f txt --exit-zero
+      run: .venv/bin/bandit -r src/refactored/ -c bandit.yaml -f txt --exit-zero
       fail_text: "セキュリティチェック失敗"
 
     # 軽量セキュリティチェック（スキップ可能）
     security-scan-light:
       run: |
         echo "🔒 軽量セキュリティスキャン..."
-        bandit -r src/refactored/ -f json -o bandit-report.json -c bandit.yaml --exit-zero
+        .venv/bin/bandit -r src/refactored/ -f json -o bandit-report.json -c bandit.yaml --exit-zero
         echo "セキュリティレポートが bandit-report.json に生成されました"
       fail_text: "セキュリティスキャンでエラーが発生しました。"
