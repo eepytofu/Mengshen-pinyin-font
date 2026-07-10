@@ -39,7 +39,9 @@ class TestTemplatePaths:
     def test_project_file_wins_over_legacy(self, scoped_settings):
         project = scoped_settings.create("Test")
         style = pipeline.style_for(project)
-        (pipeline.settings.JSON_TEMP_DIR / f"template_main_{style}.json").write_text("{}")
+        (pipeline.settings.JSON_TEMP_DIR / f"template_main_{style}.json").write_text(
+            "{}"
+        )
         json_dir = scoped_settings.json_dir(project.id)
         json_dir.mkdir(parents=True)
         new_path = json_dir / "template_main.json"
