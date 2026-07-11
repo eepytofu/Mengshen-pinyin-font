@@ -8,4 +8,4 @@ if [ ! -d webapp/frontend/dist ]; then
   (cd webapp/frontend && npm install && npm run build)
 fi
 
-exec scripts/dev-tool.sh uvicorn webapp.backend.main:app --port "${PORT:-8000}"
+exec python -m uvicorn webapp.backend.main:app --port "${PORT:-8000}"

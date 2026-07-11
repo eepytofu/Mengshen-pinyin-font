@@ -22,7 +22,7 @@ cd webapp/frontend && npm install && npm run build && cd ../..
 # サーバー起動（リポジトリルートから）
 ./scripts/webapp.sh
 # または
-scripts/dev-tool.sh uvicorn webapp.backend.main:app --port 8000
+python -m uvicorn webapp.backend.main:app --port 8000
 ```
 
 <http://localhost:8000> を開く。
@@ -30,7 +30,7 @@ scripts/dev-tool.sh uvicorn webapp.backend.main:app --port 8000
 開発時はフロントエンドを Vite で動かす（`/api` は :8000 にプロキシ）:
 
 ```bash
-scripts/dev-tool.sh uvicorn webapp.backend.main:app --port 8000 --reload &
+python -m uvicorn webapp.backend.main:app --port 8000 --reload &
 cd webapp/frontend && npm run dev   # http://localhost:5173
 ```
 
@@ -83,6 +83,6 @@ cd webapp/frontend && npm run dev   # http://localhost:5173
 ## テスト
 
 ```bash
-scripts/dev-tool.sh python -m pytest tests/webapp_api --no-cov
+python -m pytest tests/webapp_api --no-cov
 cd webapp/frontend && npx tsc --noEmit && npm run build
 ```
