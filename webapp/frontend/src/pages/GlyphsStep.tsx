@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { Badge, Button, Input, Spinner } from '../components/ui'
+import { useDebouncedPagedSearch } from '../useDebouncedPagedSearch'
 
 import type { GlyphEntry, Project } from '../types'
 import { useProject } from './ProjectLayout'
@@ -45,12 +46,9 @@ const PAGE_SIZE = 1000
 export default function GlyphsStep() {
   const { project, projectId } = useProject()
   const { t } = useTranslation()
-  const [query, setQuery] = useState('')
-  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const { query, setQuery, debounced: debouncedQuery, page, setPage } = useDebouncedPagedSearch()
   const [category, setCategory] = useState('')
-  const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<GlyphEntry | null>(null)
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const glyphs = useQuery({
     queryKey: ['glyphs', projectId, debouncedQuery, category, page],
@@ -93,14 +91,7 @@ export default function GlyphsStep() {
               className="pl-9"
               placeholder={t('glyphs.searchPlaceholder')}
               value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
-                clearTimeout(debounceTimer.current)
-                debounceTimer.current = setTimeout(() => {
-                  setDebouncedQuery(e.target.value)
-                  setPage(1)
-                }, 300)
-              }}
+              onChange={(e) => setQuery(e.target.value)}
             />
           </div>
           <div className="flex gap-1">

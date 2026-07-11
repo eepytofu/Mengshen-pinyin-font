@@ -141,3 +141,103 @@ export interface GlyphDetail extends GlyphEntry {
   tables: { id: string; label: string }[]
   ivs: IvsSequence[]
 }
+
+export interface DuoyinziRow {
+  char: string
+  readings: string[]
+  pattern_one: { index: number; pinyin: string; phrases: string[] }[]
+  pattern_two_phrases: string[]
+  exceptional_phrases: string[]
+}
+
+export interface PhrasePattern {
+  phrase: string
+  ignore: string | null
+  sequence: { char: string; lookup: string | null }[]
+}
+
+export interface DuoyinziDetail extends DuoyinziRow {
+  pattern_two_detail: PhrasePattern[]
+  exceptional_detail: PhrasePattern[]
+}
+
+export interface GsubOverview {
+  languages: Record<string, { features: string[] }>
+  features: Record<string, string[]>
+  lookups: Record<string, { type: string; rule_count: number }>
+  lookup_order: string[]
+}
+
+export interface GsubRules {
+  lookup: string
+  type: string
+  total: number
+  page: number
+  size: number
+  rules: Record<string, unknown>[]
+  glyph_chars: Record<string, string>
+}
+
+export interface IvsRow {
+  char: string
+  glyph: string
+  readings: string[]
+  sequences: IvsSequence[]
+}
+
+export interface GraphRule {
+  lookup: string
+  rule: number
+  context: string[][]
+  target_at: number | null
+  sub_lookup: string | null
+  output_glyph: string | null
+  output_reading: string | null
+  ignore: boolean
+}
+
+export interface GraphData {
+  char: string
+  glyph: string | null
+  readings: string[]
+  rules: GraphRule[]
+}
+
+export interface SimApplied {
+  lookup: string
+  rule: number
+  ignored?: boolean
+  sub_lookup?: string
+  from?: string
+  to?: string
+}
+
+export interface SimChar {
+  char: string
+  glyph: string | null
+  final_glyph: string | null
+  reading: string | null
+  default_reading: string | null
+  applied: SimApplied[]
+}
+
+export interface VerifyChar {
+  char: string
+  expected: string
+  actual: string | null
+  default: string | null
+  status: 'ok' | 'fallback' | 'wrong'
+}
+
+export interface VerifyRow {
+  phrase: string
+  source: string
+  status: 'ok' | 'fallback' | 'wrong'
+  chars: VerifyChar[]
+}
+
+export interface VerifyReport {
+  total: number
+  counts: { ok: number; fallback: number; wrong: number }
+  results: VerifyRow[]
+}
