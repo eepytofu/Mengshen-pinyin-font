@@ -143,3 +143,37 @@ class PreviewItem(BaseModel):
 class PreviewResponse(BaseModel):
     items: List[PreviewItem]
     warnings: List[str] = Field(default_factory=list)
+
+
+class PreviewDetailRequest(BaseModel):
+    char: str
+    canvas: Optional[CanvasModel] = None
+
+
+class OutlineGlyph(BaseModel):
+    glyph: str
+    path: str
+    advance_width: float
+    # Placement transform relative to the hanzi origin; identity for the
+    # hanzi glyph itself, real 2x2 scale+translate for pinyin letters.
+    a: float = 1.0
+    d: float = 1.0
+    x: float = 0.0
+    y: float = 0.0
+    label: Optional[str] = None
+
+
+class PreviewDetail(BaseModel):
+    char: str
+    pinyin: str
+    hanzi: OutlineGlyph
+    pinyin_glyphs: List[OutlineGlyph]
+    upem: int
+    hanzi_width: float
+    hanzi_height: float
+    total_height: float
+    descent: float
+    base_line: float
+    pinyin_width: float
+    pinyin_height: float
+    tracking: float

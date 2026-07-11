@@ -22,7 +22,14 @@ from src.refactored.generation.glyph_manager import PinyinGlyphGenerator
 from src.refactored.scripts.retrieve_latin_alphabet import ALPHABET
 from src.refactored.utils.pinyin_utils import simplification_pronunciation
 
-from ..schemas import CanvasModel, PreviewItem, PreviewResponse, Project
+from ..schemas import (
+    CanvasModel,
+    OutlineGlyph,
+    PreviewDetail,
+    PreviewItem,
+    PreviewResponse,
+    Project,
+)
 from .pipeline import font_metadata_from_project
 
 _font_lock = threading.Lock()
@@ -30,9 +37,15 @@ _font_lock = threading.Lock()
 
 @lru_cache(maxsize=8)
 def _load_font(path: str, sha256: str) -> TTFont:
-    # sha256 keys the cache so a replaced file at the same path reloads
+    # sha256 keys the cache so a replaced file at the same path reloads.
+    # lazy=False: fully decompile up front. lazy=True shares one TTFont
+    # across every request via this cache, and fontTools' lazy per-table
+    # __getattr__ decompilation is not safe under concurrent access — a
+    # request racing another mid-decompile can leave a subtable's `.data`
+    # cleared without its real attributes ever set, permanently breaking
+    # that cached font for the life of the process (AttributeError: cmap).
     del sha256
-    return TTFont(path, lazy=True)
+    return TTFont(path, lazy=False)
 
 
 class _FontOutlines:
@@ -103,6 +116,12 @@ def _pinyin_references(
     if glyph is None:
         return []
     return list(glyph.get("references", []))
+
+
+@lru_cache(maxsize=1)
+def _alphabet_target_by_glyph_key() -> Dict[str, str]:
+    """py_alphabet_{simplified} -> original toned pinyin char (e.g. 'ǚ')."""
+    return {f"py_alphabet_{simplification_pronunciation(c)}": c for c in ALPHABET}
 
 
 _pinyin_data = PinyinDataManager()
@@ -187,13 +206,7 @@ def compose_preview(
                 for ref in references:
                     glyph_key = str(ref["glyph"])
                     if glyph_key not in pinyin_paths:
-                        # py_alphabet_{simplified} -> original toned char
-                        target = None
-                        for char_candidate in ALPHABET:
-                            simplified = simplification_pronunciation(char_candidate)
-                            if f"py_alphabet_{simplified}" == glyph_key:
-                                target = char_candidate
-                                break
+                        target = _alphabet_target_by_glyph_key().get(glyph_key)
                         if target is None:
                             continue
                         glyph_name = pinyin.glyph_name(target)
@@ -218,3 +231,87 @@ def compose_preview(
             )
 
     return PreviewResponse(items=items, warnings=warnings)
+
+
+def compose_detail(project: Project, char: str, canvas: CanvasModel) -> PreviewDetail:
+    """Structured outlines + metrics for one character (Glyphs/FontForge-style detail view).
+
+    Reuses the same production placement math as compose_preview, but returns
+    the per-glyph paths/transforms/metrics instead of a flattened SVG string.
+    """
+    if project.base_font is None or project.pinyin_font is None:
+        raise ValueError("Select both base and pinyin fonts first")
+    if len(char) != 1:
+        raise ValueError("Specify exactly one character")
+
+    with _font_lock:
+        base = _FontOutlines(project.base_font.path, project.base_font.sha256)
+        pinyin = _FontOutlines(project.pinyin_font.path, project.pinyin_font.sha256)
+        alphabet_glyphs = _alphabet_metric_glyphs(pinyin)
+
+        base_glyph_name = base.glyph_name(char)
+        if base_glyph_name is None:
+            raise ValueError(f"Base font has no glyph for '{char}'")
+
+        pronunciations = get_pronunciations(project, char)
+        pronunciation = pronunciations[0] if pronunciations else ""
+
+        hanzi_width = base.advance_width(base_glyph_name)
+        hanzi_height = float(base.upem)
+        canvas_height_scale = hanzi_height / canvas.hanzi.height
+        total_height = hanzi_height + canvas.pinyin.height * canvas_height_scale
+        descent = abs(float(base.font["hhea"].descender))
+
+        hanzi_outline = OutlineGlyph(
+            glyph=base_glyph_name,
+            path=base.svg_path(base_glyph_name),
+            advance_width=hanzi_width,
+            label=char,
+        )
+
+        pinyin_outlines: List[OutlineGlyph] = []
+        if pronunciation and "py_alphabet_v3" in alphabet_glyphs:
+            references = _pinyin_references(
+                pronunciation,
+                hanzi_width,
+                hanzi_height,
+                canvas,
+                project,
+                alphabet_glyphs,
+            )
+            for ref in references:
+                glyph_key = str(ref["glyph"])
+                target = _alphabet_target_by_glyph_key().get(glyph_key)
+                if target is None:
+                    continue
+                glyph_name = pinyin.glyph_name(target)
+                if glyph_name is None:
+                    continue
+                pinyin_outlines.append(
+                    OutlineGlyph(
+                        glyph=glyph_name,
+                        path=pinyin.svg_path(glyph_name),
+                        advance_width=pinyin.advance_width(glyph_name),
+                        a=float(ref["a"]),
+                        d=float(ref["d"]),
+                        x=float(ref["x"]),
+                        y=float(ref["y"]),
+                        label=target,
+                    )
+                )
+
+        return PreviewDetail(
+            char=char,
+            pinyin=pronunciation,
+            hanzi=hanzi_outline,
+            pinyin_glyphs=pinyin_outlines,
+            upem=base.upem,
+            hanzi_width=hanzi_width,
+            hanzi_height=hanzi_height,
+            total_height=total_height,
+            descent=descent,
+            base_line=canvas.pinyin.base_line,
+            pinyin_width=canvas.pinyin.width,
+            pinyin_height=canvas.pinyin.height,
+            tracking=canvas.pinyin.tracking,
+        )

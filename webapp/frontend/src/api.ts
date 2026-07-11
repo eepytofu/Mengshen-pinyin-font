@@ -3,6 +3,7 @@ import type {
   Canvas,
   GlyphDetail,
   GlyphPage,
+  PreviewDetail,
   PreviewResponse,
   Project,
   TaskState,
@@ -67,6 +68,12 @@ export const api = {
     request<PreviewResponse>(`/api/projects/${id}/preview`, {
       method: 'POST',
       body: JSON.stringify({ text, canvas }),
+      signal,
+    }),
+  previewDetail: (id: string, char: string, canvas: Canvas | null, signal?: AbortSignal) =>
+    request<PreviewDetail>(`/api/projects/${id}/preview/detail`, {
+      method: 'POST',
+      body: JSON.stringify({ char, canvas }),
       signal,
     }),
 

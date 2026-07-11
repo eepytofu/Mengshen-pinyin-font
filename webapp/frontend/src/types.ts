@@ -80,6 +80,33 @@ export interface PreviewResponse {
   warnings: string[]
 }
 
+export interface OutlineGlyph {
+  glyph: string
+  path: string
+  advance_width: number
+  a: number
+  d: number
+  x: number
+  y: number
+  label: string | null
+}
+
+export interface PreviewDetail {
+  char: string
+  pinyin: string
+  hanzi: OutlineGlyph
+  pinyin_glyphs: OutlineGlyph[]
+  upem: number
+  hanzi_width: number
+  hanzi_height: number
+  total_height: number
+  descent: number
+  base_line: number
+  pinyin_width: number
+  pinyin_height: number
+  tracking: number
+}
+
 export interface GlyphEntry {
   name: string
   font: 'base' | 'pinyin' | 'output'
