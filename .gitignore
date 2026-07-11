@@ -44,3 +44,7 @@ act-commands.md
 tmp/projects/
 tmp/json/*_proj_*.json
 outputs/webapp/
+
+# built font binaries
+outputs/Mengshen-HanSerif.ttf
+outputs/Mengshen-Handwritten.ttf
