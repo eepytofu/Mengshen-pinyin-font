@@ -2,7 +2,6 @@
 
 拼音フォント生成パイプラインをブラウザから操作するローカル Web アプリ。
 
-
 ## 構成
 
 - `backend/` — FastAPI。既存の `src/refactored` パイプラインを再利用
@@ -23,15 +22,15 @@ cd webapp/frontend && npm install && npm run build && cd ../..
 # サーバー起動（リポジトリルートから）
 ./scripts/webapp.sh
 # または
-.venv/bin/uvicorn webapp.backend.main:app --port 8000
+scripts/dev-tool.sh uvicorn webapp.backend.main:app --port 8000
 ```
 
-http://localhost:8000 を開く。
+<http://localhost:8000> を開く。
 
 開発時はフロントエンドを Vite で動かす（`/api` は :8000 にプロキシ）:
 
 ```bash
-uvicorn webapp.backend.main:app --port 8000 --reload &
+scripts/dev-tool.sh uvicorn webapp.backend.main:app --port 8000 --reload &
 cd webapp/frontend && npm run dev   # http://localhost:5173
 ```
 
@@ -54,7 +53,7 @@ cd webapp/frontend && npm run dev   # http://localhost:5173
 各プロジェクトは `tmp/projects/<id>/` に自己完結して保存されます（gitignore 済み）:
 
 | パス | 内容 |
-|---|---|
+| --- | --- |
 | `tmp/projects/<id>/project.json` | プロジェクト状態（フォント選択・ライセンス合意・canvas・読みの変更・タスク） |
 | `tmp/projects/<id>/fonts/` | アップロード / 正規化されたフォント |
 | `tmp/projects/<id>/json/` | 中間ファイル（テンプレート JSON・ビルド中間の template_output.json） |
@@ -73,7 +72,7 @@ cd webapp/frontend && npm run dev   # http://localhost:5173
 文字ごとに次の3状態へ分類する（`webapp/backend/services/gsub_checker.py`）:
 
 | ステータス | 意味 | 対応要否 |
-|---|---|---|
+| --- | --- | --- |
 | **一致** | 表示される読みが期待どおり | 対応不要 |
 | **GSUB未設定** | この熟語・文字にはまだ GSUB に置換ルールが無い（ごく一部は「置換しない」例外ルールによる意図的な抑止。例: 背着手 の 着）。標準の読み（readings[0]）のまま表示される。バグではなく未対応（カバレッジ不足） | 任意（パターン表への追加でカバレッジ拡張可） |
 | **誤置換** | ルールは発火したが、期待と異なる読みに置換された | **要修正**。パターン表（`outputs/duoyinzi_pattern_one.txt` 等）の ss 番号が現在の `outputs/merged-mapping-table.txt` の読み順とずれている可能性が高い |
@@ -84,6 +83,6 @@ cd webapp/frontend && npm run dev   # http://localhost:5173
 ## テスト
 
 ```bash
-.venv/bin/python -m pytest tests/webapp_api --no-cov
+scripts/dev-tool.sh python -m pytest tests/webapp_api --no-cov
 cd webapp/frontend && npx tsc --noEmit && npm run build
 ```
