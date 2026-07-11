@@ -3,10 +3,12 @@ import LanguageDetector from 'i18next-browser-languagedetector'
 import { initReactI18next } from 'react-i18next'
 import { en } from './en'
 import { ja } from './ja'
+import { zh } from './zh'
 
 export const LANGUAGES = [
   { code: 'ja', label: '日本語' },
   { code: 'en', label: 'English' },
+  { code: 'zh', label: '中文' },
 ] as const
 
 i18n
@@ -16,9 +18,10 @@ i18n
     resources: {
       ja: { translation: ja },
       en: { translation: en },
+      zh: { translation: zh },
     },
     fallbackLng: 'ja',
-    supportedLngs: ['ja', 'en'],
+    supportedLngs: ['ja', 'en', 'zh'],
     interpolation: { escapeValue: false },
     detection: {
       order: ['localStorage', 'navigator'],
