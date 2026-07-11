@@ -395,7 +395,13 @@
     "zuān",
     "zàng",
     "zēng",
-    "zǐ"
+    "zǐ",
+    "SEVLNOTE",
+    "duoyinsi",
+    "exsit",
+    "noteclass",
+    "claudedocs",
+    "harfbuzz"
   ],
   "ignorePaths": [
     ".git/**",
