@@ -757,6 +757,7 @@
 送还: sòng/huán
 豁口: huō/kǒu
 豁出去: huō/chū/qù
+豁拳: huá/quán
 豁达: huò/dá
 豁亮: huò/liàng
 豁免: huò/miǎn
@@ -1277,6 +1278,7 @@
 数量: shù/liàng
 数据: shù/jù
 数字: shù/zì
+细数: xì/shǔ
 数见不鲜: shuò/jiàn/bù/xiān
 似乎: sì/hū
 相似: xiāng/sì
@@ -1499,6 +1501,7 @@
 殷勤: yīn/qín
 殷实: yīn/shí
 殷红: yān/hóng
+殷其雷: yǐn/qí/léi
 应当: yīng/dāng
 应该: yīng/gāi
 应届: yīng/jiè
@@ -1648,6 +1651,7 @@
 种植: zhòng/zhí
 栽种: zāi/zhòng
 耕种: gēng/zhòng
+种谔: chóng/è
 轴承: zhóu/chéng
 轴心: zhóu/xīn
 车轴: chē/zhóu
