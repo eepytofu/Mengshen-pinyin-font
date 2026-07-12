@@ -284,6 +284,7 @@
     "Duplicately",
     "src",
     "tmp",
+    "worktree",
     "res",
     "dir",
     "dirs",
