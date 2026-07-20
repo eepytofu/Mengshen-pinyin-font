@@ -1,11 +1,37 @@
 # Mengshen Pinyin Font（萌神拼音字体）
 
+Fork of [MaruTama/Mengshen-pinyin-font](https://github.com/MaruTama/Mengshen-pinyin-font).
+The font shows pinyin above Chinese characters, and it picks the reading of a
+homograph (多音字) from the context. This fork builds the serif style in all
+seven weights.
+
+Get the fonts from [Releases](https://github.com/eepytofu/Mengshen-pinyin-font/releases).
+
+> [!IMPORTANT]
+> These are not the official builds, and they have no support. Do not report
+> problems with them upstream.
+
+## Differences from upstream
+
+| | Upstream | This fork |
+| :- | :- | :- |
+| Serif weights | Regular only | Seven, ExtraLight to Heavy |
+| 略 lüè | shows `lvè` | shows `lüè`, and 24 more characters |
+| Windows family name | `Mengshen-Regular` | `Mengshen-HanSerif`, so Bold links to Regular |
+| Source Han Serif | 1.001 | 2.003 |
+| Source fonts | in the repository | downloaded by a script |
+
+The pinyin weight does not increase above bold. M+ 1m is monospaced and has no
+heavy cut and no black cut, so SemiBold, Bold and Heavy use one pinyin weight.
+
+----
+
 支持多音字的 OSS 拼音字体及其制作工具。
 
 OpenSource Pinyin font and creation tool that supports homographs (多音字).
 
-[![version](https://img.shields.io/badge/Version-v2.0.0-brightgreen.svg)](https://github.com/MaruTama/Mengshen-pinyin-font/releases/tag/v20260712-013306)
-![updated](https://img.shields.io/badge/Updated-Jul_12,_2026-green.svg)
+[![version](https://img.shields.io/badge/Version-v2.1.0-brightgreen.svg)](https://github.com/eepytofu/Mengshen-pinyin-font/releases/latest)
+![updated](https://img.shields.io/badge/Updated-Jul_21,_2026-green.svg)
 
 > 日本語版: [README_ja.md](./README_ja.md)
 
@@ -62,7 +88,7 @@ Intended for learners of Chinese and Japanese.
 
 | 变体 / Variant | 风格 / Style | 字重 / Weights | 基础字体 / Based on |
 | :-: | :-: | :-: | :-: |
-| Mengshen-HanSerif | 宋体 / Serif | 7 (ExtraLight–Heavy) | Source Han Serif + M+ M Type-1 |
+| Mengshen-HanSerif | 宋体 / Serif | 7 (ExtraLight to Heavy) | Source Han Serif + M+ M Type-1 |
 | Mengshen-Handwritten | 手写体 / Handwritten | Regular | Xiaolai Font + SetoFontSP |
 
 宋体支持思源宋体的七种字重。手写体的基础字体只有一种字重。
