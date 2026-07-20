@@ -58,3 +58,8 @@ tmp/json/temp_font_*.json
 # ignored, so a build always regenerates both.
 outputs/Mengshen-HanSerif*.ttf
 tmp/json/template_main_han_serif.json
+
+# Private fork notes, not for publication
+FORK_NOTES.md
+AGENTS.local.md
+CLAUDE.local.md
