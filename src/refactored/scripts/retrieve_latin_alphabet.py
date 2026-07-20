@@ -70,7 +70,13 @@ ALPHABET = [
     "ǘ",
     "ǚ",
     "ǜ",
-    "v",
+    # 'v' は収録しない。拼音に v は現れず、ü のグリフ名と衝突するため。
+    #
+    # Glyph names use "v" for the ü family: v/v1/v2/v3/v4 hold ü/ǖ/ǘ/ǚ/ǜ.
+    # Including the Latin letter v here gave two characters the same name
+    # (PINYIN_TONE_TO_NUMERIC maps both "ü" and "v" to "v"), and v won by dict
+    # order -- so 略 lüè rendered as "lvè". No pinyin reading contains a literal
+    # v, so dropping it resolves the collision and loses nothing.
     "w",
     "x",
     "y",
