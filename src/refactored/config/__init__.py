@@ -12,11 +12,22 @@ from .font_config import (
     HanziCanvas,
     PinyinCanvas,
 )
-from .font_name_tables import HAN_SERIF, HANDWRITTEN, VERSION, FontNameEntry
+from .font_name_tables import (
+    HAN_SERIF,
+    HANDWRITTEN,
+    VERSION,
+    FontNameEntry,
+    build_name_table,
+)
+from .font_weights import SUPPORTED_WEIGHTS, FontWeight, WeightMetadata
 from .paths import ProjectPaths
 
 __all__ = [
     "FontType",
+    "FontWeight",
+    "WeightMetadata",
+    "SUPPORTED_WEIGHTS",
+    "build_name_table",
     "FontConfig",
     "PinyinCanvas",
     "HanziCanvas",

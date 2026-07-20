@@ -124,6 +124,49 @@ services:
       - ../outputs:/app/outputs
       - ../tmp:/app/tmp
 
+  # Service for han_serif pipeline across multiple weights.
+  #
+  #   WEIGHTS="regular bold" docker-compose up pipeline-han-serif-weights
+  #
+  # Defaults to every weight. Weights whose source fonts are not present in
+  # res/fonts/han-serif are skipped with a note rather than failing the run,
+  # since the Source Han Serif and M+ cuts are downloaded manually.
+  pipeline-han-serif-weights:
+    <<: *mengshen-font-base
+    container_name: mengshen-pipeline-han-serif-weights
+    environment:
+      WEIGHTS: ${WEIGHTS:-extralight light regular medium semibold bold heavy}
+    command:
+      - /bin/bash
+      - -c
+      - |
+        set -e
+        echo "Starting han_serif multi-weight pipeline for: $${WEIGHTS}"
+        cd /app
+        cd res/phonics/duo_yin_zi/scripts && python make_pattern_table.py
+        cd ../../unicode_mapping_table && python make_unicode_pinyin_map_table.py
+        cd /app
+        for weight in $${WEIGHTS}; do
+          echo "=== $${weight} ==="
+          if ! PYTHONPATH=src python -m refactored.scripts.make_template_jsons \
+                 --style han_serif --weight "$${weight}"; then
+            echo "Skipping $${weight}: source font missing."
+            continue
+          fi
+          PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet \
+            --style han_serif --weight "$${weight}"
+          PYTHONPATH=src python -m refactored.cli.main -t han_serif --weight "$${weight}"
+        done
+
+        echo "Pipeline completed. Verifying generated files..."
+        ls -la /app/outputs/
+        echo "Han_serif multi-weight generation completed!"
+    volumes:
+      - ../src:/app/src:ro
+      - ../res:/app/res
+      - ../outputs:/app/outputs
+      - ../tmp:/app/tmp
+
   # Service for handwritten pipeline
   pipeline-handwritten:
     <<: *mengshen-font-base

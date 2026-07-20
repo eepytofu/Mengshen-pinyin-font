@@ -8,7 +8,7 @@ import json
 import os
 from typing import Dict, List, Optional
 
-from ..config.font_config import FontConfig, FontType
+from ..config.font_config import FontConfig, FontType, FontWeight
 from ..config.paths import DIR_TEMP
 from ..font_types import GlyphData
 from ..utils.logging_config import get_logger, setup_logging
@@ -164,16 +164,34 @@ class LatinAlphabetRetriever:
     def filter_alphabet_glyphs(
         self, cmap_table: Dict[str, str], glyf_table: FontTable
     ) -> FontTable:
-        """Filter alphabet glyphs for pinyin display."""
+        """Filter alphabet glyphs for pinyin display.
+
+        Missing characters are reported rather than silently skipped: the
+        accented vowels (ā á ǎ à ǹ ḿ ...) are not covered by every weight of
+        every Latin font, and a silent drop produces pinyin with holes in it.
+        """
         result = {}
+        missing = []
 
         for unicode_code in UNICODE_ALPHABET:
             unicode_str = str(unicode_code)
-            if unicode_str in cmap_table:
-                cid = cmap_table[unicode_str]
-                if cid in glyf_table:
-                    char = chr(unicode_code)
-                    result[char] = glyf_table[cid]
+            char = chr(unicode_code)
+            cid = cmap_table.get(unicode_str)
+            if cid is not None and cid in glyf_table:
+                result[char] = glyf_table[cid]
+            else:
+                missing.append(char)
+
+        if missing:
+            logger = get_logger("mengshen.scripts.retrieve_alphabet")
+            logger.warning(
+                "Pinyin font is missing %d of %d required glyphs: %s. "
+                "Pinyin using these will not render; pick a different weight "
+                "of the alphabet font.",
+                len(missing),
+                len(UNICODE_ALPHABET),
+                " ".join(missing),
+            )
 
         return result
 
@@ -231,6 +249,12 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         choices=["han_serif", "handwritten"],
         help="Font style to process.",
     )
+    parser.add_argument(
+        "--weight",
+        default=FontWeight.REGULAR.key,
+        choices=FontWeight.keys(),
+        help="Font weight to process (default: regular).",
+    )
     return parser.parse_args(args)
 
 
@@ -247,15 +271,31 @@ def retrieve_alphabet_main(args: Optional[List[str]] = None) -> None:
     else:
         font_type = FontType.HANDWRITTEN
 
-    # Get alphabet font path from configuration
-    source_font = str(FontConfig.get_alphabet_font_path(font_type))
+    weight = FontWeight.from_key(options.weight)
+    FontConfig.validate_weight(font_type, weight)
+
+    # Get alphabet font path from configuration. The pinyin uses a heavier cut
+    # than the hanzi, see PINYIN offset note in config/font_weights.py.
+    source_font = str(FontConfig.get_alphabet_font_path(font_type, weight))
+    if not os.path.exists(source_font):
+        raise FileNotFoundError(
+            f"Pinyin (alphabet) font not found: {source_font}. "
+            "Download the matching M+ 1m cut from "
+            "https://mplus-fonts.osdn.jp/about.html and place it there."
+        )
+
+    variant = FontConfig.get_variant_key(font_type, weight)
 
     # Create retriever and process
     retriever = LatinAlphabetRetriever()
-    retriever.retrieve_alphabet(source_font, options.style)
+    retriever.retrieve_alphabet(source_font, variant)
 
     logger = get_logger("mengshen.scripts.retrieve_alphabet")
-    logger.info("Latin alphabet extraction completed for %s style", options.style)
+    logger.info(
+        "Latin alphabet extraction completed for %s style (%s)",
+        options.style,
+        weight.style_name,
+    )
 
 
 if __name__ == "__main__":

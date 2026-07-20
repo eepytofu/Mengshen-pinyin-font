@@ -3,11 +3,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from pathlib import Path
 from typing import Dict
 
+from .font_weights import SUPPORTED_WEIGHTS, FontWeight, needs_overlap_avoidance
 from .paths import HAN_SERIF_FONT_DIR, HANDWRITTEN_FONT_DIR
 
 
@@ -155,11 +156,20 @@ class FontConfig:
     }
 
     @classmethod
-    def get_config(cls, font_type: FontType) -> FontMetadata:
-        """Get configuration for specified font type."""
+    def get_config(
+        cls, font_type: FontType, weight: FontWeight = FontWeight.REGULAR
+    ) -> FontMetadata:
+        """Get configuration for specified font type and weight.
+
+        Canvas metrics are shared across weights, but heavier hanzi crowd the
+        pinyin above them, so overlap avoidance is turned on from SemiBold up.
+        """
         if font_type not in cls._CONFIGS:
             raise ValueError(f"Unsupported font type: {font_type}")
-        return cls._CONFIGS[font_type]
+        config = cls._CONFIGS[font_type]
+        if needs_overlap_avoidance(weight) and not config.is_avoid_overlapping_mode:
+            return replace(config, is_avoid_overlapping_mode=True)
+        return config
 
     @classmethod
     def get_pinyin_canvas(cls, font_type: FontType) -> PinyinCanvas:
@@ -172,19 +182,53 @@ class FontConfig:
         return cls.get_config(font_type).hanzi_canvas
 
     @classmethod
-    def get_font_path(cls, font_type: FontType) -> Path:
-        """Get main font file path for specified font type."""
+    def validate_weight(cls, font_type: FontType, weight: FontWeight) -> None:
+        """Raise if the weight is not available for the given font type."""
+        supported = SUPPORTED_WEIGHTS[font_type.value]
+        if weight not in supported:
+            available = ", ".join(w.key for w in supported)
+            raise ValueError(
+                f"Weight '{weight.key}' is not available for {font_type.value}. "
+                f"Available: {available}. "
+                "(Xiaolai and SetoFont ship a single weight only.)"
+            )
+
+    @classmethod
+    def get_font_path(
+        cls, font_type: FontType, weight: FontWeight = FontWeight.REGULAR
+    ) -> Path:
+        """Get main font file path for specified font type and weight."""
+        cls.validate_weight(font_type, weight)
         if font_type == FontType.HAN_SERIF:
-            return FontConstants.HAN_SERIF_FONT_PATH
+            return (
+                HAN_SERIF_FONT_DIR
+                / f"SourceHanSerifCN-{weight.value.source_han_suffix}.ttf"
+            )
         if font_type == FontType.HANDWRITTEN:
             return FontConstants.HANDWRITTEN_FONT_PATH
         raise ValueError(f"Unsupported font type: {font_type}")
 
     @classmethod
-    def get_alphabet_font_path(cls, font_type: FontType) -> Path:
-        """Get alphabet font file path for specified font type."""
+    def get_alphabet_font_path(
+        cls, font_type: FontType, weight: FontWeight = FontWeight.REGULAR
+    ) -> Path:
+        """Get alphabet (pinyin) font file path for font type and weight."""
+        cls.validate_weight(font_type, weight)
         if font_type == FontType.HAN_SERIF:
-            return FontConstants.HAN_SERIF_ALPHABET_FONT_PATH
+            return HAN_SERIF_FONT_DIR / weight.value.alphabet_font
         if font_type == FontType.HANDWRITTEN:
             return FontConstants.HANDWRITTEN_ALPHABET_FONT_PATH
         raise ValueError(f"Unsupported font type: {font_type}")
+
+    @classmethod
+    def get_variant_key(
+        cls, font_type: FontType, weight: FontWeight = FontWeight.REGULAR
+    ) -> str:
+        """Key identifying a style+weight combination, used for intermediate files.
+
+        Regular keeps the bare style key so existing template JSONs and build
+        commands keep working unchanged.
+        """
+        if weight is FontWeight.REGULAR:
+            return font_type.value
+        return f"{font_type.value}_{weight.key}"
