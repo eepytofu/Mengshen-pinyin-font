@@ -7064,55 +7064,6 @@
       ]
     ]
   },
-  "v": {
-    "advanceWidth": 500,
-    "advanceHeight": 1000,
-    "verticalOrigin": 860,
-    "contours": [
-      [
-        {
-          "x": 251,
-          "y": 75,
-          "on": true
-        },
-        {
-          "x": 253,
-          "y": 75,
-          "on": true
-        },
-        {
-          "x": 350,
-          "y": 520,
-          "on": true
-        },
-        {
-          "x": 460,
-          "y": 520,
-          "on": true
-        },
-        {
-          "x": 322,
-          "y": 0,
-          "on": true
-        },
-        {
-          "x": 178,
-          "y": 0,
-          "on": true
-        },
-        {
-          "x": 40,
-          "y": 520,
-          "on": true
-        },
-        {
-          "x": 154,
-          "y": 520,
-          "on": true
-        }
-      ]
-    ]
-  },
   "w": {
     "advanceWidth": 500,
     "advanceHeight": 1000,
