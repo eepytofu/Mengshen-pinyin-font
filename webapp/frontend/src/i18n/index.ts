@@ -20,7 +20,7 @@ i18n
       en: { translation: en },
       zh: { translation: zh },
     },
-    fallbackLng: 'ja',
+    fallbackLng: 'zh',
     supportedLngs: ['ja', 'en', 'zh'],
     interpolation: { escapeValue: false },
     detection: {
