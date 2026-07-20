@@ -13,7 +13,7 @@ with mplus-1m-*medium* for that reason; the alphabet_font entries below keep tha
 one-step offset across the range.
 
 The offset saturates at the top: M+ 1m, the monospaced family this font uses,
-ships thin/light/regular/medium/bold only — heavy and black exist for the
+ships thin/light/regular/medium/bold only. Heavy and black exist for the
 proportional M+ families (1p, 1c) but not for 1m. So SemiBold and above all take
 mplus-1m-bold, which means the pinyin above a Heavy hanzi is relatively lighter
 than it is above a Regular one. Switching those weights to a proportional M+ cut
