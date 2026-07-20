@@ -9,7 +9,7 @@ import json
 import os
 from typing import Dict, List, Optional, Union
 
-from ..config.font_config import FontConfig, FontType
+from ..config.font_config import FontConfig, FontType, FontWeight
 from ..config.paths import DIR_TEMP
 from ..font_types import FontData, FontTableValue
 from ..utils.logging_config import get_logger, setup_logging
@@ -189,6 +189,12 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         choices=["han_serif", "handwritten"],
         help="Font style to process.",
     )
+    parser.add_argument(
+        "--weight",
+        default=FontWeight.REGULAR.key,
+        choices=FontWeight.keys(),
+        help="Font weight to process (default: regular).",
+    )
     return parser.parse_args(args)
 
 
@@ -205,15 +211,31 @@ def make_template_main(args: Optional[List[str]] = None) -> None:
     else:
         font_type = FontType.HANDWRITTEN
 
+    weight = FontWeight.from_key(options.weight)
+    FontConfig.validate_weight(font_type, weight)
+
     # Get font path from configuration
-    source_font = str(FontConfig.get_font_path(font_type))
+    source_font = str(FontConfig.get_font_path(font_type, weight))
+    if not os.path.exists(source_font):
+        raise FileNotFoundError(
+            f"Source font not found: {source_font}. "
+            f"Download the {weight.style_name} cut from "
+            "https://github.com/Pal3love/Source-Han-TrueType and place it there."
+        )
+
+    # Intermediate JSONs are keyed by style+weight so weights do not collide.
+    variant = FontConfig.get_variant_key(font_type, weight)
 
     # Create template maker and process
     maker = TemplateJsonMaker()
-    maker.make_template(source_font, options.style)
+    maker.make_template(source_font, variant)
 
     logger = get_logger("mengshen.scripts.make_template")
-    logger.info("Template JSON files created for %s style", options.style)
+    logger.info(
+        "Template JSON files created for %s style (%s)",
+        options.style,
+        weight.style_name,
+    )
 
 
 if __name__ == "__main__":

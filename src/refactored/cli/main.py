@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from ..config import FontType, ProjectPaths
+from ..config import FontConfig, FontType, FontWeight, ProjectPaths
 from ..font_types import FontPaths
 from ..generation import FontBuilder
 from ..utils.logging_config import get_logger, setup_logging
@@ -29,9 +29,10 @@ class FontGenerationCLI:
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog="""
 Examples:
-  %(prog)s -t han_serif     Generate han serif style font
-  %(prog)s -t handwritten   Generate handwritten style font
-  %(prog)s --help           Show this help message
+  %(prog)s -t han_serif                Generate han serif style font (Regular)
+  %(prog)s -t han_serif -w bold        Generate han serif Bold
+  %(prog)s -t handwritten              Generate handwritten style font
+  %(prog)s --help                      Show this help message
             """,
         )
 
@@ -41,6 +42,17 @@ Examples:
             choices=["han_serif", "handwritten"],
             default="han_serif",
             help="Font style to generate (default: han_serif)",
+        )
+
+        parser.add_argument(
+            "-w",
+            "--weight",
+            choices=FontWeight.keys(),
+            default=FontWeight.REGULAR.key,
+            help=(
+                "Font weight to generate (default: regular). "
+                "han_serif supports the full range; handwritten is regular only."
+            ),
         )
 
         parser.add_argument(
@@ -70,18 +82,23 @@ Examples:
         }
         return type_mapping[style_str]
 
-    def _get_template_paths(self, font_type: FontType) -> FontPaths:
-        """Get template file paths for font type."""
-        if font_type == FontType.HAN_SERIF:
-            template_main_filename = "template_main_han_serif.json"
-            template_glyf_filename = "template_glyf_han_serif.json"
-            alphabet_filename = "alphabet_for_pinyin_han_serif.json"  # M+ font style
-        elif font_type == FontType.HANDWRITTEN:
-            template_main_filename = "template_main_handwritten.json"
-            template_glyf_filename = "template_glyf_handwritten.json"
-            alphabet_filename = "alphabet_for_pinyin_handwritten.json"  # SetoFont style
-        else:
+    def _get_template_paths(
+        self, font_type: FontType, weight: FontWeight = FontWeight.REGULAR
+    ) -> FontPaths:
+        """Get template file paths for font type and weight.
+
+        Each weight is dumped from a different source font, so the intermediate
+        JSONs are keyed by style+weight to keep them from overwriting each other.
+        Regular keeps the original filenames.
+        """
+        if font_type not in (FontType.HAN_SERIF, FontType.HANDWRITTEN):
             raise ValueError(f"Unsupported font type: {font_type}")
+
+        variant = FontConfig.get_variant_key(font_type, weight)
+        template_main_filename = f"template_main_{variant}.json"
+        template_glyf_filename = f"template_glyf_{variant}.json"
+        # M+ font style for han_serif, SetoFont style for handwritten
+        alphabet_filename = f"alphabet_for_pinyin_{variant}.json"
 
         return {
             "template_main": self.paths.get_temp_json_path(template_main_filename),
@@ -94,20 +111,27 @@ Examples:
         }
 
     def _get_output_path(
-        self, font_type: FontType, custom_output: Optional[Path]
+        self,
+        font_type: FontType,
+        custom_output: Optional[Path],
+        weight: FontWeight = FontWeight.REGULAR,
     ) -> Path:
         """Get output font file path."""
         if custom_output:
             return custom_output
 
         if font_type == FontType.HAN_SERIF:
-            filename = "Mengshen-HanSerif.ttf"
+            stem = "Mengshen-HanSerif"
         elif font_type == FontType.HANDWRITTEN:
-            filename = "Mengshen-Handwritten.ttf"
+            stem = "Mengshen-Handwritten"
         else:
             raise ValueError(f"Unsupported font type: {font_type}")
 
-        return self.paths.get_output_path(filename)
+        # Regular keeps its historical filename; other weights are suffixed.
+        if weight is not FontWeight.REGULAR:
+            stem = f"{stem}-{weight.style_name}"
+
+        return self.paths.get_output_path(f"{stem}.ttf")
 
     def _validate_prerequisites(self, template_paths: FontPaths) -> List[str]:
         """Validate that all required files exist."""
@@ -134,15 +158,18 @@ Examples:
         try:
             # Get configuration
             font_type = self._get_font_type(parsed_args.style)
-            output_path = self._get_output_path(font_type, parsed_args.output)
+            weight = FontWeight.from_key(parsed_args.weight)
+            FontConfig.validate_weight(font_type, weight)
+            output_path = self._get_output_path(font_type, parsed_args.output, weight)
 
             if parsed_args.verbose:
                 self.logger.info("Font type: %s", font_type.name)
+                self.logger.info("Weight: %s", weight.style_name)
                 self.logger.info("Output path: %s", output_path)
 
             if parsed_args.dry_run:
                 # For dry run, we still need to validate prerequisites
-                template_paths = self._get_template_paths(font_type)
+                template_paths = self._get_template_paths(font_type, weight)
                 missing_files = self._validate_prerequisites(template_paths)
                 if missing_files:
                     self.logger.warning("Dry run - Missing required files:")
@@ -153,11 +180,12 @@ Examples:
                         "Dry run mode - would generate font with these settings:"
                     )
                     self.logger.info("  Type: %s", font_type.name)
+                    self.logger.info("  Weight: %s", weight.style_name)
                     self.logger.info("  Output: %s", output_path)
                 return 0
 
             # Use the generate_font method for actual generation
-            final_output_path = self.generate_font(font_type, output_path)
+            final_output_path = self.generate_font(font_type, output_path, weight)
 
             if parsed_args.verbose:
                 # Try to get build statistics if available
@@ -184,19 +212,24 @@ Examples:
             return 1
 
     def generate_font(
-        self, font_type: FontType, output_path: Optional[Path] = None
+        self,
+        font_type: FontType,
+        output_path: Optional[Path] = None,
+        weight: FontWeight = FontWeight.REGULAR,
     ) -> Path:
         """Generate font programmatically (for testing and API usage).
 
         Args:
             font_type: Type of font to generate
             output_path: Optional custom output path
+            weight: Font weight to generate (defaults to Regular)
 
         Returns:
             Path to generated font file
         """
-        template_paths = self._get_template_paths(font_type)
-        final_output_path = self._get_output_path(font_type, output_path)
+        FontConfig.validate_weight(font_type, weight)
+        template_paths = self._get_template_paths(font_type, weight)
+        final_output_path = self._get_output_path(font_type, output_path, weight)
 
         # Validate prerequisites
         missing_files = self._validate_prerequisites(template_paths)
@@ -216,6 +249,7 @@ Examples:
             pattern_two_path=template_paths["pattern_two"],
             exception_pattern_path=template_paths["exception_pattern"],
             paths=self.paths,
+            weight=weight,
         )
 
         font_builder.build(final_output_path)

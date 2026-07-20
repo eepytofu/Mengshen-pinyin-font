@@ -10,13 +10,13 @@ from typing import Dict, List, Optional, Protocol, cast
 import orjson
 
 from ..config import (
-    HAN_SERIF,
-    HANDWRITTEN,
     VERSION,
     FontConstants,
     FontMetadata,
     FontType,
+    FontWeight,
     ProjectPaths,
+    build_name_table,
 )
 from ..config.font_config import FontConfig
 from ..data import CharacterDataManager, MappingDataManager, PinyinDataManager
@@ -71,6 +71,7 @@ class FontBuilder:
         mapping_manager: Optional[MappingDataManager] = None,
         external_tool: Optional[ExternalToolInterface] = None,
         paths: Optional[ProjectPaths] = None,
+        weight: FontWeight = FontWeight.REGULAR,
     ):
         """Initialize FontBuilder with dependencies and file paths.
 
@@ -82,9 +83,12 @@ class FontBuilder:
             pattern_one_path: Path to pattern one file for multi-character contexts
             pattern_two_path: Path to pattern two file JSON for contextual rules
             exception_pattern_path: Path to exception pattern JSON file
+            weight: Font weight to generate (defaults to Regular)
         """
         self.font_type = font_type
-        self.font_config = FontConfig.get_config(font_type)
+        self.weight = weight
+        FontConfig.validate_weight(font_type, weight)
+        self.font_config = FontConfig.get_config(font_type, weight)
         self.paths = paths or ProjectPaths()
 
         # Template file paths
@@ -124,9 +128,9 @@ class FontBuilder:
             mapping_manager=self.mapping_manager,
         )
 
-        font_config_obj: FontMetadata = FontConfig.get_config(font_type)
+        font_config_obj: FontMetadata = FontConfig.get_config(font_type, weight)
         self.font_assembler = FontAssembler(
-            font_config=font_config_obj, paths=self.paths
+            font_config=font_config_obj, paths=self.paths, weight=weight
         )
 
         # External tool interface
@@ -713,15 +717,19 @@ class FontBuilder:
         if self._font_data is None:
             raise ValueError("Font data not loaded")
 
-        # Set name table based on font type
+        # Set name table based on font type and weight
         if self.font_type == FontType.HAN_SERIF:
-            self._font_data["name"] = cast(NameTable, HAN_SERIF)
-            self.logger.debug("name table set: HAN_SERIF")
+            style_key = "HAN_SERIF"
         elif self.font_type == FontType.HANDWRITTEN:
-            self._font_data["name"] = cast(NameTable, HANDWRITTEN)
-            self.logger.debug("name table set: HANDWRITTEN")
+            style_key = "HANDWRITTEN"
         else:
             raise ValueError(f"Unsupported font type: {self.font_type}")
+
+        self._font_data["name"] = cast(
+            NameTable, build_name_table(style_key, self.weight)
+        )
+        self.font_assembler.set_weight_attributes(self._font_data)
+        self.logger.debug("name table set: %s %s", style_key, self.weight.style_name)
 
         name_table = self._font_data.get("name")
         if (
