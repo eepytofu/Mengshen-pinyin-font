@@ -1,11 +1,35 @@
 # Mengshen Pinyin Font（萌神拼音字体）
 
+Fork of [MaruTama/Mengshen-pinyin-font](https://github.com/MaruTama/Mengshen-pinyin-font).
+The font shows pinyin above Chinese characters, and it picks the reading of a
+homograph (多音字) from the context. This fork builds the serif style in all
+seven weights.
+
+> [!IMPORTANT]
+> These are not the official builds, and they have no support. Do not report
+> problems with them upstream.
+
+## Differences from upstream
+
+| | Upstream | This fork |
+| :- | :- | :- |
+| Serif weights | Regular only | Seven, ExtraLight to Heavy |
+| 略 lüè | shows `lvè` | shows `lüè`, and 24 more characters |
+| Windows family name | `Mengshen-Regular` | `Mengshen-HanSerif`, so Bold links to Regular |
+| Source Han Serif | 1.001 | 2.003 |
+| Source fonts | in the repository | downloaded by a script |
+
+The pinyin weight does not increase above bold. M+ 1m is monospaced and has no
+heavy cut and no black cut, so SemiBold, Bold and Heavy use one pinyin weight.
+
+----
+
 支持多音字的 OSS 拼音字体及其制作工具。
 
 OpenSource Pinyin font and creation tool that supports homographs (多音字).
 
-[![version](https://img.shields.io/badge/Version-v2.0.0-brightgreen.svg)](https://github.com/MaruTama/Mengshen-pinyin-font/releases/tag/v20260712-013306)
-![updated](https://img.shields.io/badge/Updated-Jul_12,_2026-green.svg)
+[![version](https://img.shields.io/badge/Version-v2.1.0-brightgreen.svg)](https://github.com/eepytofu/Mengshen-pinyin-font/releases/latest)
+![updated](https://img.shields.io/badge/Updated-Jul_21,_2026-green.svg)
 
 > 日本語版: [README_ja.md](./README_ja.md)
 
@@ -60,16 +84,22 @@ Intended for learners of Chinese and Japanese.
 
 ## 字体变体 / Font Variants
 
-| 变体 / Variant | 风格 / Style | 基础字体 / Based on |
-| :-: | :-: | :-: |
-| Mengshen-HanSerif | 宋体 / Serif | Source Han Serif + M+ M Type-1 |
-| Mengshen-Handwritten | 手写体 / Handwritten | Xiaolai Font + SetoFontSP |
+| 变体 / Variant | 风格 / Style | 字重 / Weights | 基础字体 / Based on |
+| :-: | :-: | :-: | :-: |
+| Mengshen-HanSerif | 宋体 / Serif | 7 (ExtraLight to Heavy) | Source Han Serif + M+ M Type-1 |
+| Mengshen-Handwritten | 手写体 / Handwritten | Regular | Xiaolai Font + SetoFontSP |
+
+宋体支持思源宋体的七种字重。手写体的基础字体只有一种字重。
+
+The serif variant can be built in all seven Source Han Serif weights
+(ExtraLight, Light, Regular, Medium, SemiBold, Bold, Heavy). The handwritten
+variant is Regular only, since its base fonts ship a single weight.
 
 ----
 
 ## 下载 / Download
 
-**[Download/下载](https://github.com/MaruTama/Mengshen-pinyin-font/releases)**
+**[Download/下载](https://github.com/eepytofu/Mengshen-pinyin-font/releases)**
 
 ----
 
@@ -143,9 +173,15 @@ See the [IVS Setup Guide](./docs/IVS_SETUP_GUIDE.md) for details.
 ## 构建字体 / Building the Fonts
 
 ```bash
+# 下载基础字体 / Fetch the source fonts first (not committed to this repo)
+PYTHONPATH=src python -m refactored.scripts.fetch_source_fonts
+
 # Docker 构建（推荐） / Docker generation (recommended)
 docker-compose -f docker/docker-compose.yml up pipeline-han-serif
 docker-compose -f docker/docker-compose.yml up pipeline-handwritten
+
+# 指定字重 / Selected weights (default: all seven)
+WEIGHTS="regular bold" docker-compose -f docker/docker-compose.yml up pipeline-han-serif-weights
 ```
 
 详情请参阅 [构建指南（日语）](./docs/HOW_TO_MAKE_JP.md) / [Build Guide (English)](./docs/HOW_TO_MAKE_EN.md)。
