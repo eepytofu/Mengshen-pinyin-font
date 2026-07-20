@@ -17,7 +17,7 @@ def get_project_version() -> str:
 
     Examples:
         >>> get_project_version()  # doctest: +SKIP
-        "2.0.0"
+        "2.1.0"
     """
     try:
         # Try using importlib.metadata first (preferred for installed packages)
@@ -54,7 +54,7 @@ def get_project_version() -> str:
         pass
 
     # Final fallback
-    return "2.0.0"
+    return "2.1.0"
 
 
 def parse_version_to_float(version_str: str | None) -> float:

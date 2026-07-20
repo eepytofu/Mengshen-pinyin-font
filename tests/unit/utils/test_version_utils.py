@@ -14,7 +14,7 @@ class TestGetProjectVersion:
     def test_get_project_version_from_pyproject_toml(self) -> None:
         """Test that version is loaded from pyproject.toml."""
         version = get_project_version()
-        assert version == "2.0.0"  # Updated to match current pyproject.toml
+        assert version == "2.1.0"  # Updated to match current pyproject.toml
         assert isinstance(version, str)
         assert len(version) > 0
 
@@ -40,7 +40,7 @@ description = "Test project"
                 side_effect=ModuleNotFoundError("Not installed"),
             ):
                 version = get_project_version()
-                assert version == "2.0.0"
+                assert version == "2.1.0"
 
     def test_get_project_version_fallback_when_parsing_fails(self) -> None:
         """Test fallback behavior when version parsing fails."""
@@ -57,7 +57,7 @@ name = "test"
                     side_effect=ModuleNotFoundError("Not installed"),
                 ):
                     version = get_project_version()
-                    assert version == "2.0.0"
+                    assert version == "2.1.0"
 
 
 class TestParseVersionToFloat:

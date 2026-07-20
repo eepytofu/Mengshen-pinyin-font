@@ -14,7 +14,7 @@ class TestDynamicVersionLoading:
         from refactored import __version__
 
         # The version should be loaded from pyproject.toml
-        assert __version__ == "2.0.0"  # Current version in pyproject.toml
+        assert __version__ == "2.1.0"  # Current version in pyproject.toml
         assert isinstance(__version__, str)
         assert len(__version__) > 0
 
@@ -89,7 +89,7 @@ name = "test"
                 version = get_project_version()
 
                 # Should return fallback version
-                assert version == "2.0.0"
+                assert version == "2.1.0"
 
     def test_version_fallback_when_parsing_fails(self) -> None:
         """Test fallback behavior when version parsing fails."""
@@ -111,7 +111,7 @@ name = "test"
                     version = get_project_version()
 
                     # Should return fallback version
-                    assert version == "2.0.0"
+                    assert version == "2.1.0"
 
     def test_version_is_accessible_from_package_init(self) -> None:
         """Test that version is accessible from package __init__."""
