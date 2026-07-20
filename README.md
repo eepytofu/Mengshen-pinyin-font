@@ -60,10 +60,16 @@ Intended for learners of Chinese and Japanese.
 
 ## 字体变体 / Font Variants
 
-| 变体 / Variant | 风格 / Style | 基础字体 / Based on |
-| :-: | :-: | :-: |
-| Mengshen-HanSerif | 宋体 / Serif | Source Han Serif + M+ M Type-1 |
-| Mengshen-Handwritten | 手写体 / Handwritten | Xiaolai Font + SetoFontSP |
+| 变体 / Variant | 风格 / Style | 字重 / Weights | 基础字体 / Based on |
+| :-: | :-: | :-: | :-: |
+| Mengshen-HanSerif | 宋体 / Serif | 7 (ExtraLight–Heavy) | Source Han Serif + M+ M Type-1 |
+| Mengshen-Handwritten | 手写体 / Handwritten | Regular | Xiaolai Font + SetoFontSP |
+
+宋体支持思源宋体的七种字重。手写体的基础字体只有一种字重。
+
+The serif variant can be built in all seven Source Han Serif weights
+(ExtraLight, Light, Regular, Medium, SemiBold, Bold, Heavy). The handwritten
+variant is Regular only, since its base fonts ship a single weight.
 
 ----
 
@@ -143,9 +149,15 @@ See the [IVS Setup Guide](./docs/IVS_SETUP_GUIDE.md) for details.
 ## 构建字体 / Building the Fonts
 
 ```bash
+# 下载基础字体 / Fetch the source fonts first (not committed to this repo)
+PYTHONPATH=src python -m refactored.scripts.fetch_source_fonts
+
 # Docker 构建（推荐） / Docker generation (recommended)
 docker-compose -f docker/docker-compose.yml up pipeline-han-serif
 docker-compose -f docker/docker-compose.yml up pipeline-handwritten
+
+# 指定字重 / Selected weights (default: all seven)
+WEIGHTS="regular bold" docker-compose -f docker/docker-compose.yml up pipeline-han-serif-weights
 ```
 
 详情请参阅 [构建指南（日语）](./docs/HOW_TO_MAKE_JP.md) / [Build Guide (English)](./docs/HOW_TO_MAKE_EN.md)。

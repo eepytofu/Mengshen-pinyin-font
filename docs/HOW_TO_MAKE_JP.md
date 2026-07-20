@@ -15,7 +15,43 @@
 #### 宋体
 
 [source-han-serif(思源宋体) otf](https://github.com/adobe-fonts/source-han-serif/tree/release/OTF) から、不要な文字を取り除いた [Source-Han-TrueType](https://github.com/Pal3love/Source-Han-TrueType) をベースにしている。
-拼音部分には M+ M Type-1 の [mplus-1m-medium.ttf](https://mplus-fonts.osdn.jp/about.html) を利用している。
+拼音部分には M+ M Type-1 の [mplus-1m](https://mplus-fonts.osdn.jp/about.html) を利用している。
+
+ベースフォントはこのリポジトリには含まれていない。次のコマンドで取得する。
+
+```bash
+cd <PROJECT-ROOT>
+# 全7ウェイト（TTF 合計 約115MB）
+PYTHONPATH=src python -m refactored.scripts.fetch_source_fonts
+# 必要なウェイトのみ
+PYTHONPATH=src python -m refactored.scripts.fetch_source_fonts -w regular bold
+```
+
+##### ウェイト
+
+宋体は源ノ明朝の7ウェイトすべてで生成できる。各ウェイトには拼音用の M+ 1m を組み合わせる。
+
+| ウェイト | usWeightClass | 漢字 | 拼音 |
+| :- | :-: | :- | :- |
+| extralight | 200 | SourceHanSerifCN-ExtraLight | mplus-1m-light |
+| light | 300 | SourceHanSerifCN-Light | mplus-1m-regular |
+| regular | 400 | SourceHanSerifCN-Regular | mplus-1m-medium |
+| medium | 500 | SourceHanSerifCN-Medium | mplus-1m-bold |
+| semibold | 600 | SourceHanSerifCN-SemiBold | mplus-1m-bold |
+| bold | 700 | SourceHanSerifCN-Bold | mplus-1m-bold |
+| heavy | 900 | SourceHanSerifCN-Heavy | mplus-1m-bold |
+
+拼音は漢字の約4分の1の高さで表示されるため、漢字より一段階太いウェイトを使う。
+ただし M+ 1m は等幅で thin/light/regular/medium/bold の5種類しかない。
+heavy と black は M+ のプロポーショナル系（1p, 1c）にしかないため、semibold 以上は
+すべて mplus-1m-bold を使う。したがって Heavy の拼音は Regular の拼音より相対的に細く見える。
+
+拼音の重なり回避（`is_avoid_overlapping_mode`）は宋体では全ウェイトで無効にしている。
+M+ 1m は等幅なので、ウェイトを太くしても字送りは変わらず、拼音が詰まることはない。
+有効にすると6文字の拼音で表示領域が 850 から漢字幅の 1000 に広がり、
+隣の音節とくっついてしまう（`shuāng chuáng zhuāng` が `shuāngchuángzhuāng` になる）。
+
+手書き風は Regular のみである。シャオライと瀬戸フォントは1ウェイトしか配布されていない。
 
 #### 手書き風
 
@@ -209,6 +245,8 @@ python src/legacy/make_template_jsons.py <BASE-FONT-NAME>
 cd <PROJECT-ROOT>
 # han-serif
 PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style han_serif
+# han-serif の別ウェイト
+PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style han_serif --weight bold
 # handwritten
 PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style handwritten
 ```
@@ -231,6 +269,8 @@ python src/legacy/retrieve_latin_alphabet.py <FONT-NAME-FOR-PINYIN>
 ```bash
 # han-serif
 PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style han_serif
+# han-serif の別ウェイト
+PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style han_serif --weight bold
 # handwritten
 PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style handwritten
 ```
@@ -306,6 +346,8 @@ python make_unicode_pinyin_map_table.py
 # glyf table はサイズが大きく閲覧のときに不便なので他のテーブルと分離する。
 # han-serif
 PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style han_serif
+# han-serif の別ウェイト
+PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style han_serif --weight bold
 # handwritten
 PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style handwritten
 
@@ -313,12 +355,16 @@ PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style handwrit
 # 固定幅の英字フォントのみ対応
 # han-serif
 PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style han_serif
+# han-serif の別ウェイト
+PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style han_serif --weight bold
 # handwritten
 PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style handwritten
 
 # フォント生成
 # han-serif
 time PYTHONPATH=src python -m refactored.cli.main -t han_serif
+# han-serif の別ウェイト -> outputs/Mengshen-HanSerif-Bold.ttf
+time PYTHONPATH=src python -m refactored.cli.main -t han_serif --weight bold
 # handwritten
 time PYTHONPATH=src python -m refactored.cli.main -t handwritten
 

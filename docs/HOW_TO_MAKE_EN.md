@@ -16,7 +16,65 @@ There are 16,026 characters targeted for pinyin display.
 
 The font used here is based on [Source-Han-TrueType](https://github.com/Pal3love/Source-Han-TrueType).
 This is a TTF version of [Source Han Sans](https://github.com/adobe-fonts/source-han-sans)/[Source Han Serif](https://github.com/adobe-fonts/source-han-serif) with reduced file size. All required Chinese characters are included.
-[M+ M Type-1's mplus-1m-medium.ttf](https://mplus-fonts.osdn.jp/about.html) is used for the pinyin part of this font.
+[M+ M Type-1](https://mplus-fonts.osdn.jp/about.html) is used for the pinyin part of this font.
+
+The source fonts are not committed to this repository. Fetch them with:
+
+```bash
+cd <PROJECT-ROOT>
+# All seven weights (~115 MB of TTFs)
+PYTHONPATH=src python -m refactored.scripts.fetch_source_fonts
+# Or just the ones you need
+PYTHONPATH=src python -m refactored.scripts.fetch_source_fonts -w regular bold
+```
+
+##### Weights
+
+han-serif can be built in any of Source Han Serif's seven weights. Each is
+paired with an M+ 1m cut for the pinyin:
+
+| Weight | usWeightClass | Hanzi | Pinyin |
+| :- | :-: | :- | :- |
+| extralight | 200 | SourceHanSerifCN-ExtraLight | mplus-1m-light |
+| light | 300 | SourceHanSerifCN-Light | mplus-1m-regular |
+| regular | 400 | SourceHanSerifCN-Regular | mplus-1m-medium |
+| medium | 500 | SourceHanSerifCN-Medium | mplus-1m-bold |
+| semibold | 600 | SourceHanSerifCN-SemiBold | mplus-1m-bold |
+| bold | 700 | SourceHanSerifCN-Bold | mplus-1m-bold |
+| heavy | 900 | SourceHanSerifCN-Heavy | mplus-1m-bold |
+
+The pinyin sits at about a quarter of the hanzi height, so it uses a cut one
+step heavier than the hanzi to stay legible. That offset stops at bold: M+ 1m is
+monospaced and ships thin/light/regular/medium/bold only, so semibold and above
+all share mplus-1m-bold and the pinyin above a Heavy hanzi is proportionally
+lighter than it is above a Regular one.
+
+Pinyin overlap avoidance (`is_avoid_overlapping_mode`) stays off for every
+han_serif weight. Heavier weights look like they should need it, but M+ 1m is
+monospaced: a bold letter has the same advance width as a medium one, so the
+pinyin never crowds as the weight goes up. Enabling it would widen the pinyin
+canvas from 850 to the full 1000-unit hanzi advance at six letters, running
+adjacent syllables together (`shuāngchuángzhuāng` rather than
+`shuāng chuáng zhuāng`).
+
+handwritten is Regular-only: Xiaolai and SetoFontSP each ship a single weight.
+
+##### Naming and style linking
+
+Regular and Bold share the family name `Mengshen-HanSerif` and differ by
+subfamily, so the OS style-links them and Ctrl+B works. The other five weights
+each get their own family (`Mengshen-HanSerif Light` and so on) plus a
+typographic family/subfamily pair (nameID 16/17) that groups the whole range in
+applications that read them.
+
+Note that the Regular shipped before this change declared its family as
+`Mengshen-HanSerif` on Macintosh but `Mengshen-Regular` on Windows. Windows
+style-links two cuts only when their nameID 1 matches, so the Windows name is
+now normalised to `Mengshen-HanSerif` for every weight; otherwise Bold would
+never attach to Regular. Existing Windows documents that recorded the family as
+`Mengshen-Regular` may need the font reselected. To keep the old behaviour, set
+`NORMALISE_WINDOWS_FAMILY_NAME = False` in
+`src/refactored/config/font_name_tables.py`.
 
 #### handwritten
 
@@ -211,6 +269,8 @@ python src/legacy/make_template_jsons.py <BASE-FONT-NAME>
 cd <PROJECT-ROOT>
 # han-serif
 PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style han_serif
+# han-serif, another weight
+PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style han_serif --weight bold
 # handwritten
 PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style handwritten
 ```
@@ -234,6 +294,8 @@ python src/legacy/retrieve_latin_alphabet.py <FONT-NAME-FOR-PINYIN>
 cd <PROJECT-ROOT>
 # han-serif
 PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style han_serif
+# han-serif, another weight
+PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style han_serif --weight bold
 # handwritten
 PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style handwritten
 ```
@@ -309,6 +371,8 @@ python make_unicode_pinyin_map_table.py
 # glyf table is large and inconvenient for browsing, so separate from other tables
 # han-serif
 PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style han_serif
+# han-serif, another weight
+PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style han_serif --weight bold
 # handwritten
 PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style handwritten
 
@@ -316,12 +380,16 @@ PYTHONPATH=src python -m refactored.scripts.make_template_jsons --style handwrit
 # Only fixed-width English fonts supported
 # han-serif
 PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style han_serif
+# han-serif, another weight
+PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style han_serif --weight bold
 # handwritten
 PYTHONPATH=src python -m refactored.scripts.retrieve_latin_alphabet --style handwritten
 
 # Font generation
 # han-serif
 time PYTHONPATH=src python -m refactored.cli.main -t han_serif
+# han-serif, another weight -> outputs/Mengshen-HanSerif-Bold.ttf
+time PYTHONPATH=src python -m refactored.cli.main -t han_serif --weight bold
 # handwritten
 time PYTHONPATH=src python -m refactored.cli.main -t handwritten
 
