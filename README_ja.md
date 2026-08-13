@@ -45,6 +45,7 @@ OSS の多音字に対応した拼音フォント及びその作成ツールで�
 - [ガイド](#ガイド)
 - [対応多音字一覧](#対応多音字一覧)
 - [生成方法](#生成方法)
+- [Webアプリ](#webアプリ)
 - [プロジェクトについて](#プロジェクトについて)
 - [謝辞](#謝辞)
 - [カンパ](#カンパ)
@@ -166,6 +167,25 @@ WEIGHTS="regular bold" docker-compose -f docker/docker-compose.yml up pipeline-h
 ```
 
 詳細は [フォント生成ガイド（日本語）](./docs/HOW_TO_MAKE_JP.md) を参照してください。
+
+----
+
+## Webアプリ
+
+コマンドラインでのビルドに加えて、ローカルで動く Web アプリ **Mengshen Font Studio** も同梱しています。
+ブラウザ上でフォントを選択し、ライセンスを確認し、拼音の位置をプレビューを見ながら調整し、
+グリフを一覧・検索し、多音字と GSUB テーブルを確認・検証し、文字ごとの読みを編集して、
+TTF を生成・ダウンロードするところまで、コマンドラインを使わずに行えます。
+
+![webapp_font_studio_outline_detail](./imgs/webapp_font_studio_outline_detail.png)
+![webapp_font_studio_duoyinzi](./imgs/webapp_font_studio_duoyinzi.png)
+
+```bash
+pip install -e ".[webapp]"
+./scripts/webapp.sh
+```
+
+ブラウザで <http://localhost:8000> を開いてください。詳細は [webapp/README.md](./webapp/README.md) を参照。
 
 ----
 

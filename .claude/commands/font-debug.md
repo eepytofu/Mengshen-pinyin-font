@@ -22,7 +22,7 @@ description: Mengshen 拼音フォントプロジェクト固有のデバッグ�
 
 **症状（エラーメッセージ）**
 
-```
+```text
 otfccbuild: Circular glyph reference found in gid X to gid Y. The reference will be dropped.
 ```
 
@@ -32,7 +32,7 @@ otfccbuild: Circular glyph reference found in gid X to gid Y. The reference will
 代表的な重複ケース：
 
 | Unicode | グリフ名 |
-|---|---|
+| --- | --- |
 | ⺎ (U+2E8E), 兀 (U+5140), 兀 (U+FA0C) | cid10849 |
 | 嗀 (U+55C0), 嗀 (U+FA0D) | cid12670 |
 
@@ -66,7 +66,7 @@ python find_circular_reference_gid.py
 **feature タグ別の動作（調査済み）**
 
 | タグ | Mac | 用途 | 採用 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `salt` | ⚠️ 検証時に不可 | スタイル代替 | 非推奨（`rclt` を優先） |
 | `aalt` | ✅ | ユーザー向け代替文字表示 | 目的が違う |
 | `calt` | ✅ | 文脈依存置換（Chaining contextual substitution） | 使用可 |
@@ -81,7 +81,7 @@ python find_circular_reference_gid.py
 **GSUB lookup の命名規則**
 
 | lookup 名 | 対応パターン |
-|---|---|
+| --- | --- |
 | `lookup_pattern_0N` | pattern one（1文字だけ変化） |
 | `lookup_pattern_1N` | pattern two（2文字以上変化） |
 | `lookup_pattern_2N` | exception pattern（例外） |
@@ -133,7 +133,7 @@ otfccbuild の仕様（または OpenType の仕様）で、アフィン変換�
 
 **仕様（調査済み）**
 
-```
+```text
 inputBegins = min(at)
 inputEnds   = max(at) + 1
 ```
@@ -144,7 +144,7 @@ inputEnds   = max(at) + 1
 
 **具体例**
 
-```
+```text
 sub [uni4E0D uni9280] uni884C' lookup lookup_0;
   → at: 1, inputBegins: 1, inputEnds: 2
 
@@ -339,6 +339,141 @@ pip install fonttools
 
 ---
 
+### パターン6: 多音字の拼音が期待と違う（webapp の GSUB 検証タブを使う）
+
+**症状**
+
+- 特定の熟語で拼音が期待と違う読みになる（例: 着手 が zhuó ではなく別の読みになる）
+- `scripts/validate_phrase.py` は通るのに、実際にビルドしたフォントで読みがおかしい
+
+**原因（典型例）**
+
+`outputs/duoyinzi_pattern_one.txt` や手書きの `duoyinzi_exceptional_pattern.json` に書かれた
+読みの ss 番号（`ss01`, `ss02`, ...）が、現在の `outputs/merged-mapping-table.txt` の読み順と
+ずれている。`validate_phrase.py` はパターン表の**内部整合性**（重複・干渉・異読数）しか検証せず、
+「生成された GSUB が実際に期待どおりの拼音を出すか」までは検証しない。
+
+**診断ツール**: webapp の 多音字/GSUB → 検証 タブ（`webapp/backend/services/gsub_checker.py`）
+
+このタブは OpenType シェーパーと同じ手順で rclt チェイニングルールをシミュレートし、
+`res/phonics/duo_yin_zi/` のフレーズ表（期待読み）と突き合わせて次の3状態に分類する:
+
+| ステータス | 意味 | 対応要否 |
+|---|---|---|
+| **一致** | 表示される読みが期待どおり | 対応不要 |
+| **GSUB未設定** | この熟語・文字にはまだ GSUB に置換ルールが無い（ごく一部は「置換しない」例外ルールによる意図的な抑止。例: 背着手 の 着）。標準の読み（readings[0]）のまま表示される。バグではなく未対応（カバレッジ不足） | 任意（パターン表への追加でカバレッジ拡張可） |
+| **誤置換** | ルールは発火したが、期待と異なる読みに置換された | **要修正**。パターン表の ss 番号が現在の読み順とずれている可能性が高い |
+
+**診断手順**
+
+```bash
+# API で直接確認する場合
+curl -s localhost:8000/api/projects/<id>/gsub/verify | jq '.counts'
+curl -s localhost:8000/api/projects/<id>/gsub/verify | jq '.results[] | select(.status=="wrong")'
+
+# 特定フレーズを個別にシミュレートする（フレーズシミュレータと同じ処理）
+curl -s -X POST localhost:8000/api/projects/<id>/gsub/simulate \
+  -H 'Content-Type: application/json' -d '{"text":"背着手"}' | jq
+```
+
+「誤置換」が出た場合は、対象文字の `outputs/merged-mapping-table.txt` の読み順を確認し、
+`res/phonics/duo_yin_zi/scripts/make_pattern_table.py` を再実行してパターン表を再生成する
+（`res/phonics/duo_yin_zi/phrase_of_exceptional_pattern.txt` は手書きなので ss 番号を手動修正）。
+
+**GSUB タブの「グラフ」表示**でも同じ文字を対象に、コンテキスト → lookup → 読みの関係を
+視覚的に確認できる（ignore ルールは赤で表示）。
+
+---
+
+### パターン7: `python -m src.refactored.cli.main -t <style>` が `Missing required files: template_glyf_*.json` で失敗する
+
+**症状**
+
+```text
+ERROR: Error: Missing required files: ['template_glyf: /path/to/tmp/json/template_glyf_han_serif.json']
+```
+
+新しいクローン・新しいブランチ・新しい worktree でビルドしようとすると必ず起きる。
+`tmp/json/template_main_<style>.json`（glyf を除いたメタデータ）は git 管理されているが、
+`tmp/json/template_glyf_<style>.json`（glyf テーブル本体、数百MB）は git 管理されておらず、
+手元で `res/fonts/` のベースフォントから再生成する必要がある。
+
+**診断手順**
+
+```bash
+# 1. どのベースフォントから template_main_<style>.json が作られたか確認する
+#    (han_serif -> res/fonts/han-serif/SourceHanSerifCN-Regular.ttf、
+#     handwritten -> 対応するベースフォント)
+
+# 2. 同じフォントを otfccdump で展開する
+otfccdump -o /tmp/dump.json --pretty res/fonts/han-serif/SourceHanSerifCN-Regular.ttf
+
+# 3. 既存の template_main_<style>.json と head/cmap/glyph_order が一致するか確認する
+#    （一致しなければ別バージョンのフォントを掴んでいるので template_main 側を疑う）
+python3 -c "
+import json
+with open('/tmp/dump.json', encoding='utf-8', errors='replace') as f:
+    d = json.load(f)
+with open('tmp/json/template_main_han_serif.json', encoding='utf-8', errors='replace') as f:
+    m = json.load(f)
+print('head:', d['head']==m['head'])
+print('cmap:', d['cmap']==m['cmap'])
+print('glyph_order:', d['glyph_order']==m['glyph_order'])
+"
+
+# 4. 一致したら glyf だけ抽出して不足ファイルを作る
+jq '.glyf' /tmp/dump.json > tmp/json/template_glyf_han_serif.json
+```
+
+handwritten スタイルも同様（`res/fonts/` 配下の対応するベースフォント + `template_glyf_handwritten.json`）。
+
+**注意**: `otfccdump` の出力は UTF-8 として厳密でないバイトを含むことがある
+（copyright の `©` 等）。Python で読む際は `encoding='utf-8', errors='replace'` を付ける。
+
+---
+
+### パターン8: otfccbuild の修正が「本当に効いたか」を確認する
+
+**背景**
+
+`otfccbuild` は壊れた GSUB テーブルでも**警告なくビルドを成功させる**ことがある
+（パターン2・issue #29/#31/otfcc#1 の GSUB 破損バグが典型例）。
+「ビルドが通った」「unit test が通った」だけでは、実際にシェーピングエンジンが
+正しく解釈できる状態かどうかの証明にならない。
+
+**3段階の検証手順（このプロジェクトで実際に使った方法）**
+
+```bash
+# 1. otfccdump で自己往復させる
+#    otfccbuild が壊れたテーブルを吐いた場合、otfccdump 自身が
+#    「subtable が空」「lookup を削除した」等の警告を出すことがある
+otfccdump -o /tmp/check.json --pretty outputs/Mengshen-HanSerif.ttf 2>&1
+# 例: "[WARNING] [Consolidate] Lookup lookup_aalt_1 is empty and will be removed."
+#     → ビルド時に投入したデータが失われている証拠
+
+# 2. fontTools の厳格なパーサで読み込めるか確認する
+#    otfcc の甘い実装と違い、仕様違反があると例外を出す
+python3 -c "
+from fontTools.ttLib import TTFont
+f = TTFont('outputs/Mengshen-HanSerif.ttf')
+gsub = f['GSUB'].table
+print('lookup types:', [lk.LookupType for lk in gsub.LookupList.Lookup])
+"
+# AssertionError や 'Unknown Coverage format: NNNNN' が出たら破損確定
+
+# 3. 実際の HarfBuzz シェーピングで期待通りに動くか確認する
+LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
+  hb-shape --font-file=outputs/Mengshen-HanSerif.ttf --text="道行" --show-text --output-format=json
+# 期待: 2文字目が héng 用の .ssNN グリフになっている
+# (hb-shape はロケール未設定だと日本語環境で
+#  "変換する入力に無効なバイトの並びがあります" と失敗するので LC_ALL/LANG が必須)
+```
+
+**この3段階すべてが揃って初めて「直った」と言える**。1・2だけでは自動置換が
+実際に発火するかまでは分からない。
+
+---
+
 ## 使用例
 
 ```text
@@ -348,4 +483,7 @@ pip install fonttools
 /font-debug inputBegins の値がおかしい
 /font-debug json dump
 /font-debug グリフを SVG で確認したい
+/font-debug 着手の拼音が期待と違う
+/font-debug Missing required files template_glyf
+/font-debug GSUB の修正が本当に効いたか確認したい
 ```

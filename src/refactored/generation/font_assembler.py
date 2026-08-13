@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, cast
+from typing import Any, Dict, Optional, cast
 
 from ..config import (
     VERSION,
@@ -60,8 +60,17 @@ class FontAssembler:
         generation_time = datetime.now(timezone.utc).timestamp()
         return round(generation_time - base_time)
 
-    def set_font_metadata(self, font_data: FontData, font_type: FontType) -> None:
-        """Set font metadata including version and creation date."""
+    def set_font_metadata(
+        self,
+        font_data: FontData,
+        font_type: FontType,
+        name_table: Optional[NameTable] = None,
+    ) -> None:
+        """Set font metadata including version and creation date.
+
+        An explicitly passed name_table takes precedence over the presets
+        and is required for FontType.CUSTOM.
+        """
 
         # Set font revision
         head_table = cast(HeadTable, font_data[FontConstants.HEAD_TABLE])
@@ -81,16 +90,20 @@ class FontAssembler:
             generation_time.strftime("%Y-%m-%d %H:%M:%S"),
         )
 
-        if font_type == FontType.HAN_SERIF:
-            style_key = "HAN_SERIF"
-        elif font_type == FontType.HANDWRITTEN:
-            style_key = "HANDWRITTEN"
+        if name_table is not None:
+            font_data[FontConstants.NAME_TABLE] = name_table
         else:
-            raise ValueError(f"Unsupported font type: {font_type}")
+            if font_type == FontType.HAN_SERIF:
+                style_key = "HAN_SERIF"
+            elif font_type == FontType.HANDWRITTEN:
+                style_key = "HANDWRITTEN"
+            else:
+                raise ValueError(f"Unsupported font type: {font_type}")
 
-        font_data[FontConstants.NAME_TABLE] = cast(
-            NameTable, font_name_tables.build_name_table(style_key, self.weight)
-        )
+            font_data[FontConstants.NAME_TABLE] = cast(
+                NameTable, font_name_tables.build_name_table(style_key, self.weight)
+            )
+
         self.set_weight_attributes(font_data)
 
     def set_weight_attributes(self, font_data: FontData) -> None:

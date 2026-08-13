@@ -72,6 +72,9 @@ class FontBuilder:
         external_tool: Optional[ExternalToolInterface] = None,
         paths: Optional[ProjectPaths] = None,
         weight: FontWeight = FontWeight.REGULAR,
+        *,
+        font_config: Optional[FontMetadata] = None,
+        name_table: Optional[NameTable] = None,
     ):
         """Initialize FontBuilder with dependencies and file paths.
 
@@ -84,11 +87,16 @@ class FontBuilder:
             pattern_two_path: Path to pattern two file JSON for contextual rules
             exception_pattern_path: Path to exception pattern JSON file
             weight: Font weight to generate (defaults to Regular)
+            font_config: Optional FontMetadata overriding FontConfig presets
+                (required for FontType.CUSTOM)
+            name_table: Optional name table entries overriding the preset
+                tables (required for FontType.CUSTOM)
         """
         self.font_type = font_type
         self.weight = weight
+        self.name_table = name_table
         FontConfig.validate_weight(font_type, weight)
-        self.font_config = FontConfig.get_config(font_type, weight)
+        self.font_config = font_config or FontConfig.get_config(font_type, weight)
         self.paths = paths or ProjectPaths()
 
         # Template file paths
@@ -128,9 +136,8 @@ class FontBuilder:
             mapping_manager=self.mapping_manager,
         )
 
-        font_config_obj: FontMetadata = FontConfig.get_config(font_type, weight)
         self.font_assembler = FontAssembler(
-            font_config=font_config_obj, paths=self.paths, weight=weight
+            font_config=self.font_config, paths=self.paths, weight=weight
         )
 
         # External tool interface
@@ -671,7 +678,9 @@ class FontBuilder:
         if self._font_data is None:
             raise ValueError("Font data not loaded")
 
-        self.font_assembler.set_font_metadata(self._font_data, self.font_type)
+        self.font_assembler.set_font_metadata(
+            self._font_data, self.font_type, name_table=self.name_table
+        )
 
         # Set font metrics to accommodate pinyin height
         # This matches the legacy set_about_size() method behavior
@@ -717,19 +726,27 @@ class FontBuilder:
         if self._font_data is None:
             raise ValueError("Font data not loaded")
 
-        # Set name table based on font type and weight
-        if self.font_type == FontType.HAN_SERIF:
-            style_key = "HAN_SERIF"
-        elif self.font_type == FontType.HANDWRITTEN:
-            style_key = "HANDWRITTEN"
+        # Injected name table takes precedence over the presets
+        if self.name_table is not None:
+            self._font_data["name"] = self.name_table
+            self.logger.debug("name table set: injected (%s)", self.font_type.name)
         else:
-            raise ValueError(f"Unsupported font type: {self.font_type}")
+            # Set name table based on font type and weight
+            if self.font_type == FontType.HAN_SERIF:
+                style_key = "HAN_SERIF"
+            elif self.font_type == FontType.HANDWRITTEN:
+                style_key = "HANDWRITTEN"
+            else:
+                raise ValueError(f"Unsupported font type: {self.font_type}")
 
-        self._font_data["name"] = cast(
-            NameTable, build_name_table(style_key, self.weight)
-        )
+            self._font_data["name"] = cast(
+                NameTable, build_name_table(style_key, self.weight)
+            )
+            self.logger.debug(
+                "name table set: %s %s", style_key, self.weight.style_name
+            )
+
         self.font_assembler.set_weight_attributes(self._font_data)
-        self.logger.debug("name table set: %s %s", style_key, self.weight.style_name)
 
         name_table = self._font_data.get("name")
         if (
