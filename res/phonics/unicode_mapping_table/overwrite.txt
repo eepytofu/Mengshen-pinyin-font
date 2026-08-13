@@ -1215,7 +1215,7 @@ U+5B57: zì,zi  #字
 U+5B59: sūn,xùn,sùn  #孙
 U+5B5A: fú,fū  #孚
 U+5B66: xué  #学
-U+5B6A: lüán,luán  #孪
+U+5B6A: luán,lüán  #孪
 U+5B6B: sūn,xùn,sùn  #孫
 U+5B71: chán,càn  #孱
 U+5B73: zī,zì  #孳
@@ -1829,7 +1829,7 @@ U+630E: kū,kuà,kōu  #挎
 U+630F: dòng,tóng  #挏
 U+6310: rú,ná  #挐
 U+6316: wā,wá  #挖
-U+631B: lüán,liàn,luán  #挛
+U+631B: luán,liàn,lüán  #挛
 U+631F: xiá,xié,jiá,jiā  #挟
 U+6320: náo,nào,xiāo,nao  #挠
 U+6321: dàng,dǎng  #挡
@@ -4210,7 +4210,7 @@ U+810A: jǐ,jí,ji  #脊
 U+810E: shā,sà  #脎
 U+810F: zàng,zāng,zǎng  #脏
 U+8111: nǎo,nào  #脑
-U+8114: lüǎn,luán,jī  #脔
+U+8114: luán,lüǎn,jī  #脔
 U+8115: wǎn,wèn,wàn,wán  #脕
 U+8116: bó  #脖
 U+8118: guǎn,wǎn  #脘
@@ -4666,7 +4666,7 @@ U+8635: zhí,zhī  #蘵
 U+8646: léi,luó,lěi  #虆
 U+864E: hǔ,hū,hu  #虎
 U+864F: lǔ,luǒ  #虏
-U+8651: bì,lǜ  #虑
+U+8651: lǜ,bì  #虑
 U+8652: sī  #虒
 U+8655: chǔ,chù,chu  #處
 U+8656: hū,hú  #虖
@@ -5066,7 +5066,7 @@ U+8B0E: mí,mì,mèi  #謎
 U+8B0F: xiǎo  #謏
 U+8B11: xì,xǐ  #謑
 U+8B13: chēn  #謓
-U+8B14: nüè,xuè  #謔
+U+8B14: xuè,nüè  #謔
 U+8B15: sī,tí  #謕
 U+8B19: qiān,qiàn,zhàn  #謙
 U+8B1A: yì,shì  #謚
