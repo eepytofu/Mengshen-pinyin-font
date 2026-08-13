@@ -5,6 +5,8 @@
 # 通用规范汉字表 と Big5-2003 から必要な文字コードを生成する
 
 import os
+import re
+import unicodedata
 import urllib.error
 
 # Reference
@@ -257,6 +259,74 @@ def marge_mapping_table():
             write_file.write(marged_mapping_table[int_unicode])
 
 
+# 軽声（声調記号なし）は熟語の中でしか現れないので、単独字の読みには使わない
+TONE_MARKS = "̄́̌̀"  # macron, acute, caron, grave
+
+# 助詞は例外。軽声そのものが本来の読みなので、そちらを先頭にする。
+#
+# Grammatical particles are the exception to the neutral tone rule. For these
+# the neutral tone *is* the citation reading, and the toned reading is the rare
+# one. Both were checked against Wiktionary:
+#   么  me, as in 什么. yāo is a rare variant of 幺.
+#   嘛  ma, the discourse particle. má is dialectal or incomplete.
+# 呀 is deliberately absent: Wiktionary lists yā first, so it keeps yā.
+NEUTRAL_TONE_IS_PRIMARY = {"么", "嘛"}
+
+
+def has_tone_mark(syllable):
+    """True when the syllable carries a tone mark.
+
+    A syllable without one is a neutral tone (轻声). It appears only inside
+    particular compounds, never as the citation reading of a character on its
+    own: 子 is zǐ, and zi only in words like 儿子. The font draws characters
+    one at a time, so a neutral tone must never lead.
+    """
+    return any(ch in TONE_MARKS for ch in unicodedata.normalize("NFD", syllable))
+
+
+# 先頭の読みはフォントが実際に描画するものなので、標準読み（kMandarin）を先頭に戻す
+def promote_standard_reading(line):
+    """Move the mainland standard reading back to the front of an override line.
+
+    The first reading is the one drawn above the character, and overwrite.txt
+    replaced whole lines, which demoted the standard reading for thousands of
+    characters: 来 was drawn lài, 万 was drawn mò, 个 was drawn ge.
+
+    The override keeps deciding *which* readings exist, because the stylistic
+    sets and the IVS sequences are built from that list. It no longer decides
+    which one comes first. Nothing is added and nothing is removed here, so the
+    glyph count and the variant sequences do not change.
+
+    A line is left untouched when pinyin.txt does not know the character, when
+    the override dropped the standard reading on purpose, or when pinyin.txt
+    leads with a neutral tone. That last case is why 子 keeps zǐ: pinyin.txt
+    leads with the toneless zi, which belongs to 儿子, not to 子 on its own.
+    """
+    match = re.match(r"^(U\+([0-9A-F]+):\s*)([^\s#]+)(.*)$", line.rstrip("\n"))
+    if not match:
+        return line
+
+    prefix, code, readings_part, suffix = match.groups()
+    readings = [r for r in readings_part.split(",") if r]
+    character = chr(int(code, 16))
+    standard = get_pinyin_from_txt(character)
+    if not standard or not readings:
+        return line
+
+    wanted = standard[0]
+    if wanted not in readings or readings[0] == wanted:
+        return line
+    if (
+        not has_tone_mark(wanted)
+        and has_tone_mark(readings[0])
+        and character not in NEUTRAL_TONE_IS_PRIMARY
+    ):
+        return line
+
+    reordered = [wanted] + [r for r in readings if r != wanted]
+    return f"{prefix}{','.join(reordered)}{suffix}\n"
+
+
 # pinyin を上書きする（pinyin.txt で変換できなかったもの誤っているものの修正）
 def overwrite_pinyin():
     marged_mapping_table = {}
@@ -278,6 +348,7 @@ def overwrite_pinyin():
         for i in range(3):
             header += read_file.readline()
         for line in read_file:
+            line = promote_standard_reading(line)
             str_unicode = line.rstrip("\n").split(":")[0]
             int_unicode = int(str_unicode[2:], 16)
             unicode_list_for_sort.append(int_unicode)

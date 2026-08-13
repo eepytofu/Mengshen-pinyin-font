@@ -241,7 +241,6 @@
 腋臭: yè/chòu
 铜臭: tóng/xiù
 无色无臭: wú/sè/wú/xiù
-乳臭未干: rǔ/xiù/wèi/gān
 处女: chǔ/nǚ
 处世: chǔ/shì
 处暑: chǔ/shǔ
@@ -921,7 +920,6 @@
 尽力: jìn/lì
 尽情: jìn/qíng
 尽头: jìn/tóu
-尽兴: jìn/xìng
 尽职: jìn/zhí
 尽忠: jìn/zhōng
 禁闭: jìn/bì
@@ -1012,7 +1010,6 @@
 娱乐: yú/lè
 乐池: yuè/chí
 乐谱: yuè/pǔ
-乐曲: yuè/qǔ
 乐器: yuè/qì
 乐团: yuè/tuán
 乐章: yuè/zhāng
@@ -1725,3 +1722,9 @@
 佰划: bǎi/huai
 奇怪: qí/guài
 奇数: jī/shù
+干将: gàn/jiàng
+尽着: jǐn/zhe
+熨帖: yù/tiē
+舍得: shě/de
+角斗: jué/dòu
+要挟: yāo/xié
