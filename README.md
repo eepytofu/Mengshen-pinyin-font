@@ -28,8 +28,8 @@ heavy cut and no black cut, so SemiBold, Bold and Heavy use one pinyin weight.
 
 OpenSource Pinyin font and creation tool that supports homographs (多音字).
 
-[![version](https://img.shields.io/badge/Version-v2.1.0-brightgreen.svg)](https://github.com/eepytofu/Mengshen-pinyin-font/releases/latest)
-![updated](https://img.shields.io/badge/Updated-Jul_21,_2026-green.svg)
+[![version](https://img.shields.io/badge/Version-v2.2.0-brightgreen.svg)](https://github.com/eepytofu/Mengshen-pinyin-font/releases/latest)
+![updated](https://img.shields.io/badge/Updated-Aug_14,_2026-green.svg)
 
 > 日本語版: [README_ja.md](./README_ja.md)
 

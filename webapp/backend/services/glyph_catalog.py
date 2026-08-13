@@ -24,9 +24,11 @@ INDEX_FILENAME = "glyph_index.json"
 # Bump when index build logic changes so cached glyph_index.json regenerates
 _INDEX_VERSION = "v5"
 
-# The 55 latin letters (plain + tone-marked) actually used to compose
+# The 54 latin letters (plain + tone-marked) actually used to compose
 # pinyin. The pinyin category must stay within these — a full latin font
 # carries hundreds of other letters that are not pinyin.
+# This fork drops "v" from ALPHABET, so the count is one lower than upstream.
+# See retrieve_latin_alphabet.ALPHABET for why.
 _PINYIN_ALPHABET = frozenset(ALPHABET)
 
 _index_lock = threading.Lock()
@@ -227,7 +229,7 @@ def _build_index(project: Project) -> List[dict]:
             # (通用规范汉字表 / Big5 / 常用漢字表)
             if category == "hanzi" and not any(cp in allowed for cp in codepoints):
                 continue
-            # The pinyin category is exactly the 55 letters used for pinyin,
+            # The pinyin category is exactly the 54 letters used for pinyin,
             # not every latin/greek letter the font happens to carry
             is_pinyin_letter = role == "pinyin" and char in _PINYIN_ALPHABET
             if is_pinyin_letter and category == "other":
