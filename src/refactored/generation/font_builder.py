@@ -745,8 +745,7 @@ class FontBuilder:
             self.logger.debug(
                 "name table set: %s %s", style_key, self.weight.style_name
             )
-
-        self.font_assembler.set_weight_attributes(self._font_data)
+            self.font_assembler.set_weight_attributes(self._font_data)
 
         name_table = self._font_data.get("name")
         if (

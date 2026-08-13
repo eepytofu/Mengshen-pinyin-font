@@ -186,8 +186,15 @@ class FontConfig:
 
     @classmethod
     def validate_weight(cls, font_type: FontType, weight: FontWeight) -> None:
-        """Raise if the weight is not available for the given font type."""
-        supported = SUPPORTED_WEIGHTS[font_type.value]
+        """Raise if the weight is not available for the given font type.
+
+        FontType.CUSTOM has no preset weights. It builds from a font the
+        caller supplies, so the caller owns the weight and nothing here can
+        check it.
+        """
+        supported = SUPPORTED_WEIGHTS.get(font_type.value)
+        if supported is None:
+            return
         if weight not in supported:
             available = ", ".join(w.key for w in supported)
             raise ValueError(

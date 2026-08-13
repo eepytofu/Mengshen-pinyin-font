@@ -91,6 +91,9 @@ class FontAssembler:
         )
 
         if name_table is not None:
+            # The caller supplies both the name table and the source font, so
+            # the weight belongs to it. Stamping this fork's weight here would
+            # relabel a Bold upload as Regular.
             font_data[FontConstants.NAME_TABLE] = name_table
         else:
             if font_type == FontType.HAN_SERIF:
@@ -103,8 +106,7 @@ class FontAssembler:
             font_data[FontConstants.NAME_TABLE] = cast(
                 NameTable, font_name_tables.build_name_table(style_key, self.weight)
             )
-
-        self.set_weight_attributes(font_data)
+            self.set_weight_attributes(font_data)
 
     def set_weight_attributes(self, font_data: FontData) -> None:
         """Set OS/2 and head fields that describe the weight.
