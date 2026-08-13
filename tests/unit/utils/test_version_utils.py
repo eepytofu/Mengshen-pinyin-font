@@ -1,11 +1,28 @@
 """Tests for version utility functions."""
 
+import re
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
 import pytest
 
-from refactored.utils.version_utils import get_project_version, parse_version_to_float
+from refactored.utils.version_utils import (
+    FALLBACK_VERSION,
+    get_project_version,
+    parse_version_to_float,
+)
+
+
+def version_in_pyproject() -> str:
+    """Read the version straight from pyproject.toml.
+
+    The expected value is derived, not written out, so a version bump does not
+    turn these tests red.
+    """
+    pyproject = Path(__file__).resolve().parents[3] / "pyproject.toml"
+    match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject.read_text(), re.MULTILINE)
+    assert match, "pyproject.toml has no version field"
+    return match.group(1)
 
 
 class TestGetProjectVersion:
@@ -14,9 +31,13 @@ class TestGetProjectVersion:
     def test_get_project_version_from_pyproject_toml(self) -> None:
         """Test that version is loaded from pyproject.toml."""
         version = get_project_version()
-        assert version == "2.1.0"  # Updated to match current pyproject.toml
+        assert version == version_in_pyproject()
         assert isinstance(version, str)
         assert len(version) > 0
+
+    def test_fallback_matches_pyproject(self) -> None:
+        """The hardcoded last-resort value must not drift from pyproject.toml."""
+        assert FALLBACK_VERSION == version_in_pyproject()
 
     def test_get_project_version_with_mock_content(self) -> None:
         """Test version parsing from mock pyproject.toml content."""
@@ -40,7 +61,7 @@ description = "Test project"
                 side_effect=ModuleNotFoundError("Not installed"),
             ):
                 version = get_project_version()
-                assert version == "2.1.0"
+                assert version == FALLBACK_VERSION
 
     def test_get_project_version_fallback_when_parsing_fails(self) -> None:
         """Test fallback behavior when version parsing fails."""
@@ -57,7 +78,7 @@ name = "test"
                     side_effect=ModuleNotFoundError("Not installed"),
                 ):
                     version = get_project_version()
-                    assert version == "2.1.0"
+                    assert version == FALLBACK_VERSION
 
 
 class TestParseVersionToFloat:

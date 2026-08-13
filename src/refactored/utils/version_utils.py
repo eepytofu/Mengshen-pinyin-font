@@ -8,6 +8,10 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
+# Last resort only, used when the package metadata and pyproject.toml are both
+# unreachable. Keep it equal to the version in pyproject.toml.
+FALLBACK_VERSION = "2.2.0"
+
 
 def get_project_version() -> str:
     """Get version from pyproject.toml with fallback mechanisms.
@@ -17,7 +21,7 @@ def get_project_version() -> str:
 
     Examples:
         >>> get_project_version()  # doctest: +SKIP
-        "2.1.0"
+        "2.2.0"
     """
     try:
         # Try using importlib.metadata first (preferred for installed packages)
@@ -54,7 +58,7 @@ def get_project_version() -> str:
         pass
 
     # Final fallback
-    return "2.1.0"
+    return FALLBACK_VERSION
 
 
 def parse_version_to_float(version_str: str | None) -> float:

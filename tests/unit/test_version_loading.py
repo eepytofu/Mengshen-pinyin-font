@@ -1,9 +1,24 @@
 """Tests for dynamic version loading from pyproject.toml."""
 
+import re
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
 import pytest
+
+from refactored.utils.version_utils import FALLBACK_VERSION
+
+
+def version_in_pyproject() -> str:
+    """Read the version straight from pyproject.toml.
+
+    The expected value is derived, not written out, so a version bump does not
+    turn these tests red.
+    """
+    pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject.read_text(), re.MULTILINE)
+    assert match, "pyproject.toml has no version field"
+    return match.group(1)
 
 
 class TestDynamicVersionLoading:
@@ -14,7 +29,7 @@ class TestDynamicVersionLoading:
         from refactored import __version__
 
         # The version should be loaded from pyproject.toml
-        assert __version__ == "2.1.0"  # Current version in pyproject.toml
+        assert __version__ == version_in_pyproject()
         assert isinstance(__version__, str)
         assert len(__version__) > 0
 
@@ -89,7 +104,7 @@ name = "test"
                 version = get_project_version()
 
                 # Should return fallback version
-                assert version == "2.1.0"
+                assert version == FALLBACK_VERSION
 
     def test_version_fallback_when_parsing_fails(self) -> None:
         """Test fallback behavior when version parsing fails."""
@@ -111,7 +126,7 @@ name = "test"
                     version = get_project_version()
 
                     # Should return fallback version
-                    assert version == "2.1.0"
+                    assert version == FALLBACK_VERSION
 
     def test_version_is_accessible_from_package_init(self) -> None:
         """Test that version is accessible from package __init__."""
