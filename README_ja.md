@@ -25,7 +25,7 @@
 
 OSS の多音字に対応した拼音フォント及びその作成ツールです。
 
-[![version](https://img.shields.io/badge/Version-v2.2.0-brightgreen.svg)](https://github.com/eepytofu/Mengshen-pinyin-font/releases/latest)
+[![version](https://img.shields.io/badge/Version-v2.3.0-brightgreen.svg)](https://github.com/eepytofu/Mengshen-pinyin-font/releases/latest)
 ![updated](https://img.shields.io/badge/Updated-Aug_14,_2026-green.svg)
 
 > 英語・中国語版: [README.md](./README.md)

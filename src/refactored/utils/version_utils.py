@@ -10,7 +10,7 @@ from pathlib import Path
 
 # Last resort only, used when the package metadata and pyproject.toml are both
 # unreachable. Keep it equal to the version in pyproject.toml.
-FALLBACK_VERSION = "2.2.0"
+FALLBACK_VERSION = "2.3.0"
 
 
 def get_project_version() -> str:
